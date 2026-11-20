@@ -24,6 +24,29 @@ export function compareMemories(before,after){
  const a=before.map(m=>m.summary).join('\n'),b=after.map(m=>m.summary).join('\n');
  return {changed:a!==b,beforeCharacters:[...a].length,afterCharacters:[...b].length,beforeTitles:before.map(m=>m.title),afterTitles:after.map(m=>m.title),note:'这里只比较内容变化，不能据此判定剧情更准确；请结合来源与检查意见核对。'};
 }
-export function textDialog(title,label,value=''){
- return new Promise(resolve=>{const d=document.createElement('dialog');d.className='smm-editor';const form=document.createElement('form'),h=document.createElement('h3'),l=document.createElement('label'),area=document.createElement('textarea'),cancel=document.createElement('button'),save=document.createElement('button');h.textContent=title;l.textContent=label;area.value=value;area.rows=6;cancel.type='button';cancel.textContent='取消';save.type='submit';save.textContent='确定';l.append(area);form.append(h,l,cancel,save);d.append(form);document.body.append(d);let result=null;cancel.onclick=()=>d.close();form.onsubmit=e=>{e.preventDefault();result=area.value;d.close();};d.onclose=()=>{d.remove();resolve(result);};d.showModal();area.focus();});
+export function textDialog(title,label,value='',confirmLabel='确定'){
+ return new Promise(resolve=>{const d=document.createElement('dialog');d.className='smm-editor';const form=document.createElement('form'),h=document.createElement('h3'),l=document.createElement('label'),area=document.createElement('textarea'),cancel=document.createElement('button'),save=document.createElement('button');h.textContent=title;l.textContent=label;area.value=value;area.rows=6;cancel.type='button';cancel.textContent='取消';save.type='submit';save.textContent=confirmLabel;l.append(area);form.append(h,l,cancel,save);d.append(form);document.body.append(d);let result=null;cancel.onclick=()=>d.close();form.onsubmit=e=>{e.preventDefault();result=area.value;d.close();};d.onclose=()=>{d.remove();resolve(result);};d.showModal();area.focus();});
+}
+
+export function compactReviewNotes(issues=[]){
+ const seen=new Set();
+ return issues.flatMap(({message,suggestion,field,quote})=>{
+  const note={problem:message, ...(suggestion?{suggestion}:{}), ...(field?{field}:{}), ...(quote&&quote.length<=160?{excerpt:quote}:{})};
+  const key=JSON.stringify(note);
+  if(seen.has(key))return [];
+  seen.add(key);
+  return [note];
+ });
+}
+
+export function mapReviewedRewrite(previous,next){
+ if(previous.length!==next.length)throw Error('重写条数变化，无法安全对应已保存记忆；原记忆保留，请逐条重写');
+ const signature=m=>JSON.stringify([...new Set(m.sources||[])].sort((a,b)=>a-b));
+ const remaining=new Set(previous);
+ return next.map(item=>{
+  const candidates=previous.length===1?previous:[...remaining].filter(old=>signature(old)===signature(item));
+  if(candidates.length!==1)throw Error('多条重写记忆的来源无法唯一对应；原记忆保留，请逐条重写');
+  const old=candidates[0];remaining.delete(old);
+  return {...old,title:item.title,summary:item.summary,details:item.details,brief:item.brief||old.brief,keywords:item.keywords,quoteChecks:item.quoteChecks};
+ });
 }

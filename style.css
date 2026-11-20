@@ -89,7 +89,6 @@
 /* Compact, native help disclosures; separate from settings groups. */
 #smm-panel .smm-help{margin:9px 0;font-size:.88em;font-weight:400;border:0;background:transparent}#smm-panel .smm-help>summary{display:flex;align-items:center;gap:7px;cursor:pointer;list-style:none;padding:3px 0;color:var(--smm-ink);font-weight:400}#smm-panel .smm-help>summary::-webkit-details-marker{display:none}#smm-panel .smm-help-icon{display:inline-flex;flex:0 0 17px;align-items:center;justify-content:center;width:17px;height:17px;border:1px solid currentColor;border-radius:50%;font:bold 12px/1 Georgia,serif;opacity:.8}#smm-panel .smm-help>div{margin:7px 0 10px 24px;padding:9px 11px;border-left:2px solid var(--smm-line);line-height:1.8;overflow-wrap:anywhere}#smm-panel .smm-check-important{padding:16px;min-height:68px;background:var(--smm-surface);border:1px solid var(--smm-accent);border-radius:10px;font-weight:650;font-size:1em}#smm-panel .smm-check-important input{width:22px;height:22px}#smm-panel .smm-batch-advice{display:block;font-size:.85em;font-weight:400;margin:6px 0;opacity:.85}
 
-#smm-panel [data-action="settings-open"]{min-width:36px!important;min-height:36px!important;font-size:21px!important;padding:4px 7px!important}
 #smm-panel .smm-memory-details>summary>[data-pick]{display:inline-block;flex:0 0 auto;width:18px;height:18px;margin:3px 8px 3px 0;cursor:pointer}
 .smm-keyword-warning{border:1px solid #ba8e39;border-radius:8px;padding:9px;color:inherit;background:rgba(185,135,36,.12);font-size:.9em}
 .smm-task-result{display:inline-block;padding:3px 6px;border:1px solid currentColor;border-radius:5px}
@@ -113,7 +112,6 @@
 #smm-tour button{appearance:none;display:block;position:static;margin:0!important;padding:8px 12px!important;min-width:60px;min-height:38px;border:1px solid #8195ac!important;border-radius:7px!important;background:#8195ac22!important;color:inherit!important;font:inherit!important;cursor:pointer;box-shadow:none!important}
 #smm-tour button:last-child{background:#8195ac44!important}
 #smm-tour button:disabled{opacity:.45;cursor:default}
-#smm-panel>header button[data-action]{border:1px solid var(--smm-line)!important;border-radius:8px;box-shadow:none}
 #smm-panel[data-theme=paper] :is(p,span,small,label,summary,h3,h4,strong,b,pre,input,textarea,select,button){color:var(--smm-ink)!important;text-shadow:none!important}
 #smm-panel[data-theme=paper] .smm-hint{opacity:1}
 #smm-panel .smm-settings-profiles{padding:8px 12px;margin:8px 0}
@@ -164,3 +162,87 @@
 #smm-floating-progress p{overflow:auto;min-height:0;flex:1;font-size:.86em;margin:8px 0}
 #smm-floating-progress footer{flex:none;display:flex;gap:4px;flex-wrap:wrap}
 #smm-floating-progress footer button{font-size:.8em;padding:4px 7px;min-height:30px;flex:1}
+
+/* Navigation and memory controls use one quiet active state. */
+#smm-panel nav{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+#smm-panel :is(nav,header,.smm-tool-row,.smm-searchbar) button{
+ border:0!important;box-shadow:none!important;background:transparent;
+ border-radius:6px;
+}
+#smm-panel>header button{width:36px;height:36px;min-height:36px;padding:0;font-size:21px}
+#smm-panel nav button{padding:7px 2px;font-size:clamp(12px,3vw,15px)}
+#smm-panel :is(nav,header,.smm-tool-row,.smm-searchbar) button:is(.active,[aria-pressed=true],:hover,:active){
+ background:color-mix(in srgb,var(--smm-ink) 15%,var(--smm-bg))!important;
+}
+#smm-panel .smm-tool-row{display:flex;flex-wrap:wrap;align-items:center;gap:2px 5px}
+#smm-panel .smm-memory-tools .smm-tool-row button{font-size:.82em;min-height:30px;padding:4px 7px}
+#smm-panel .smm-memory-operations{border-block-start:1px solid var(--smm-line);padding:8px 0;margin:4px 0 8px}
+#smm-panel .smm-memory-operations strong{font-size:.85em}
+#smm-panel :is(input:not([type=checkbox],[type=range],[type=color]),textarea,select),
+html[data-smm-theme] .smm-editor :is(input:not([type=checkbox],[type=range],[type=color]),textarea,select){
+ background:var(--smm-field-bg)!important;color:var(--smm-field-ink)!important;
+ border:1px solid var(--smm-field-border)!important;text-shadow:none!important;
+ color-scheme:var(--smm-field-scheme,normal);
+}
+#smm-panel :is(input,textarea)::placeholder,html[data-smm-theme] .smm-editor :is(input,textarea)::placeholder{
+ color:var(--smm-field-ink)!important;opacity:.65;
+}
+html[data-smm-theme],#smm-panel{
+ --smm-field-bg:#1e2938;--smm-field-ink:#f1f4f8;--smm-field-border:#74869a99;--smm-field-scheme:dark;
+}
+html[data-smm-theme=contrast],#smm-panel[data-theme=contrast]{
+ --smm-field-bg:#070b11;--smm-field-ink:#fff;--smm-field-border:#a6c0d2;
+}
+html[data-smm-theme=paper],#smm-panel[data-theme=paper]{
+ --smm-field-bg:#fffaf1;--smm-field-ink:#332f2b;--smm-field-border:#9b8a71;--smm-field-scheme:light;
+}
+html[data-smm-theme=tavern],#smm-panel[data-theme=tavern]{
+ --smm-field-bg:linear-gradient(var(--SmartThemeChatTintColor,transparent),var(--SmartThemeChatTintColor,transparent)),var(--smm-tavern-bg,#202735);
+ --smm-field-ink:var(--SmartThemeBodyColor,#e8edf4);--smm-field-border:var(--SmartThemeBorderColor,#74869a99);
+ --smm-field-scheme:normal;
+}
+
+/* The memory page has one compact selection row and four direct operations. */
+#smm-panel .smm-memory-topline{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin:4px 0 10px}
+#smm-panel .smm-memory-topline :is(.smm-source-sort,.smm-scope-control){display:flex;flex-direction:column;align-items:stretch;gap:5px;min-width:0;margin:0;font-size:.82em}
+#smm-panel .smm-memory-topline select{width:100%;min-width:0;margin:0;padding:7px 9px;min-height:38px;font-size:1em}
+#smm-panel .smm-memory-operations>.smm-tool-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+#smm-panel .smm-memory-operations>.smm-tool-row button{padding:6px 3px;white-space:nowrap}
+#smm-panel .smm-keyword-tools{display:inline-flex;gap:4px;align-items:center;margin-left:auto}
+#smm-panel .smm-keyword-tools button{font-size:.75em;padding:3px 5px;min-height:28px;margin:0;border:0;background:transparent}
+#smm-panel .smm-group>summary .smm-keyword-tools [data-action=keywords]{margin:0}
+#smm-panel .smm-keyword-tools button:hover{background:var(--smm-button-1-bg)}
+.smm-destination .smm-destination-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.smm-destination .smm-destination-options label{display:flex;align-items:center;gap:8px;padding:12px;margin:0;border:1px solid #8298ad55;border-radius:7px;cursor:pointer}
+.smm-destination .smm-destination-options label:has(input:checked){background:#7cadd822;border-color:#7cadd8}
+.smm-destination .smm-destination-options label:has(input:disabled){opacity:.45;cursor:default}
+.smm-destination input[type=radio]{width:18px;height:18px;flex:none;margin:0;accent-color:#7cadd8}
+@media(max-width:330px){#smm-panel .smm-memory-operations>.smm-tool-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Search is available but quiet; viewing and editing have separate visual weight. */
+#smm-panel .smm-body>.smm-searchbar{margin:0 0 12px;gap:4px}
+#smm-panel .smm-body>.smm-searchbar input{
+ background:color-mix(in srgb,var(--smm-bg) 94%,var(--smm-ink) 6%)!important;
+ border-color:color-mix(in srgb,var(--smm-ink) 22%,transparent)!important;
+ padding:7px 9px;min-height:36px;font-size:.84em;
+}
+#smm-panel .smm-body>.smm-searchbar button{font-size:.82em;color:var(--smm-ink)}
+#smm-panel .smm-body>.smm-searchbar span{font-size:.76em}
+#smm-panel .smm-memory-tools>.smm-tool-row{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:4px 0 12px;
+}
+#smm-panel .smm-memory-tools button{width:100%;white-space:nowrap}
+#smm-panel .smm-memory-workspace{
+ padding:10px;background:color-mix(in srgb,var(--smm-bg) 94%,var(--smm-ink) 6%);
+ border-radius:10px;min-width:0;
+}
+#smm-panel .smm-memory-workspace>.smm-memory-operations{margin:0 0 10px;padding:0 0 9px;border-block-start:0;border-bottom:1px solid var(--smm-line)}
+#smm-panel .smm-memory-workspace>.smm-group{margin-bottom:10px}
+#smm-panel .smm-memory-workspace>.smm-group:last-child{margin-bottom:0}
+
+#smm-panel .smm-body>.smm-searchbar{flex-wrap:nowrap;align-items:center;min-height:32px}
+#smm-panel .smm-body>.smm-searchbar input{
+ flex:0 1 220px;max-width:220px;height:32px;min-height:32px;padding:5px 8px;font-size:.8em;text-overflow:ellipsis;
+ background:color-mix(in srgb,var(--smm-bg) 96%,#fff 4%)!important;
+}
+#smm-panel .smm-body>.smm-searchbar button{height:30px;min-height:30px!important;padding:4px 6px!important}

@@ -21,9 +21,10 @@ with sync_playwright() as p:
   page.route('**/scripts/world-info.js',lambda r:r.fulfill(content_type='text/javascript',body='export const world_info={};export async function loadWorldInfo(){return {entries:{0:{uid:0,content:"WORLD_EVIDENCE 有效世界书内容",key:["铜印"],disable:false}}}}'))
   page.route('**/scripts/chats.js',lambda r:r.fulfill(content_type='text/javascript',body='export async function hideChatMessageRange(start,end){for(let i=start;i<=end;i++)window.SillyTavern.getContext().chat[i].is_system=true}'))
   page.route('**/api/chats/get',lambda r:r.fulfill(json=[{'chat_metadata':page.evaluate('window.savedStore')}]))
-  behavior={'drift':False,'fail':False,'multi':False};repair_calls=[];calls={'summary':0,'check':0};check_sizes=[];held=[];hold={'value':False}
+  behavior={'drift':False,'fail':False,'multi':False};repair_calls=[];calls={'summary':0,'check':0};check_sizes=[];revisions=[];theme_checks=[];held=[];hold={'value':False}
   def generate(route):
    data=route.request.post_data_json;payload=json.loads(data['messages'][-1]['content'])
+   if 'revision' in payload.get('task',{}):revisions.append(payload['task']['revision'])
    if 'items' in payload:
     content=json.dumps({'items':[{'id':m['id'],'keywords':['铜印','阿宁']} for m in payload['items']]},ensure_ascii=False)
    elif 'originalResponse' in payload:
@@ -93,7 +94,7 @@ with sync_playwright() as p:
   assert page.locator('[data-setting=excludeTags]').input_value()=='think,thinking,details,summary'
   for tag in ['bbi_image','image','###']:assert page.locator('[data-tag-preset=excludeTags][data-tag="'+tag+'"]').count()==1
   page.locator('[data-setting=themePreset]').select_option('paper')
-  assert page.locator('[data-action=settings-open]').evaluate('(e)=>getComputedStyle(e).borderTopStyle')=='solid'
+  assert page.locator('[data-action=settings-open]').evaluate('(e)=>getComputedStyle(e).borderTopStyle')=='none'
   assert page.locator('[data-setting=themePreset]').evaluate('(e)=>getComputedStyle(e).color')=='rgb(51, 47, 43)'
   page.get_by_role('button',name='总结',exact=True).click();drawers();page.locator('[data-action=usage-preview]').click()
   page.wait_for_function('document.querySelector("#smm-request-usage").innerText.includes("合计")')
@@ -174,9 +175,41 @@ with sync_playwright() as p:
   page.wait_for_function('document.querySelector(".smm-save [data-action=approve]")?.disabled===false')
   assert page.locator('.smm-review-mark').count()>0
   assert '本次保存' in page.locator('.smm-save-preview').inner_text()
+  before=calls.copy()
   page.locator('[data-action=regenerate]').click();page.locator('[data-choice=review]').click()
+  page.locator('dialog').get_by_role('button',name='取消',exact=True).click()
+  assert calls==before
+  page.locator('[data-action=regenerate]').click();page.locator('[data-choice=review]').click()
+  page.locator('dialog textarea').fill('保留这场对峙为一条记忆')
+  page.locator('dialog').get_by_role('button',name='开始生成',exact=True).click()
+
   page.wait_for_function('!!document.querySelector("[data-action=version-select]")')
   assert '草稿差异对照' not in page.locator('.smm-body').inner_text()
+  assert calls['summary']==before['summary']+1 and calls['check']==before['check']
+  assert revisions[-1]['userInstruction']=='保留这场对峙为一条记忆' and revisions[-1]['reviewNotes'][0]['suggestion']=='不要推断日期'
+  page.locator('[data-action=regenerate]').click();page.locator('[data-choice=review]').click()
+  behavior['fail']=True
+  page.locator('dialog').get_by_role('button',name='开始生成',exact=True).click()
+  page.wait_for_function('document.querySelector("#smm-floating-progress")?.hidden===true')
+  page.wait_for_function('document.getElementById("st_memory_manager-toast")?.textContent.includes("Failed to fetch")')
+  assert calls['summary']==before['summary']+2 and calls['check']==before['check']
+  assert page.locator('[data-action=version-select]').count()==2
+  assert revisions[-1]['userInstruction']=='' and revisions[-1]['reviewNotes']==revisions[-2]['reviewNotes']
+  behavior['fail']=False
+  before=calls.copy()
+  page.locator('[data-action=regenerate]').click();page.locator('[data-choice=own]').click()
+  page.locator('dialog').get_by_role('button',name='开始生成',exact=True).click()
+  assert calls==before
+  page.locator('[data-action=regenerate]').click();page.locator('[data-choice=own]').click()
+  page.locator('dialog textarea').fill('保留约定，简洁表达')
+  page.locator('dialog').get_by_role('button',name='开始生成',exact=True).click()
+  page.wait_for_function('document.querySelectorAll("[data-action=version-select]").length===3')
+  assert revisions[-1]=={'userInstruction':'保留约定，简洁表达','reviewNotes':[]}
+  page.locator('[data-action=regenerate]').click();page.locator('[data-choice=fresh]').click()
+  page.wait_for_function('document.querySelectorAll("[data-action=version-select]").length===4')
+  assert revisions[-1]=={'userInstruction':'','reviewNotes':[]}
+  assert calls['summary']==before['summary']+2 and calls['check']==before['check']
+
   # Early preview also queues batch drafts exactly once and never stalls for save.
   page.locator('[data-action=discard]').click()
   page.locator('[data-tab=summary]').click();drawers();page.locator('#smm-batch-start').fill('0');page.locator('#smm-batch-end').fill('9');page.locator('[data-setting=batchSize]').fill('5');page.locator('[data-setting=batchClassification]').select_option('manual');page.locator('#smm-batch-hide').uncheck()
@@ -305,7 +338,7 @@ with sync_playwright() as p:
   assert page.evaluate("document.getElementById('st_memory_manager-toast')?.textContent.includes('铜印约定') && document.getElementById('st_memory_manager-toast')?.textContent.includes('已更新')")
   behavior['status']=False
   # Move selected short records; they must not remain checked in long or after changing pages.
-  page.locator('[data-tab=memories]').click();drawers();page.locator('[data-pick=old]').check();page.locator('[data-action=kind-long]').click();drawers()
+  page.locator('[data-tab=memories]').click();drawers();page.locator('[data-pick=old]').check();page.locator('[data-action=memory-add]').click();page.locator('.smm-destination [value=long]').check();page.locator('.smm-destination').get_by_role('button',name='确定添加').click();page.wait_for_function('window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories.find(m=>m.id==="old").kind==="long"');page.wait_for_function('!document.querySelector("[data-pick]:checked")');drawers()
   assert page.locator('[data-pick]:checked').count()==0
   assert page.locator('.smm-group > summary [data-action=keywords]').count()==1
   page.evaluate('window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories.find(m=>m.id==="old").keywords=[]')
@@ -341,6 +374,112 @@ with sync_playwright() as p:
   assert '长期记忆' in page.locator('.smm-card summary small').first.inner_text()
   # Clear reviewed queue before checking cancellation of another two-batch task.
   page.evaluate("""()=>{const s=window.SillyTavern.getContext().chatMetadata.st_memory_manager;localStorage.removeItem('st_memory_manager:session:character:mock.png::flow-test');Object.assign(s.options,{check:false});window.handlers.CHAT_CHANGED();}""")
+  # Stage counters are computed from the current active and eligible records.
+  page.evaluate("""()=>{const s=window.SillyTavern.getContext().chatMetadata.st_memory_manager;s.memories=Array.from({length:10},(_,i)=>({id:'org'+i,title:'整理测试'+i,summary:'阿宁赴约',details:{},keywords:[],sources:[i],kind:'short',status:'active',level:1}));s.batches=[];Object.assign(s.options,{autoSecondary:false,autoTertiary:false,oldPolicy2:'archive',oldPolicy3:'archive'});window.handlers.CHAT_CHANGED();}""")
+  page.locator('[data-tab=organize]').click();drawers()
+  stage1=page.locator('[data-entry=organization-1] > summary');stage2=page.locator('[data-entry=organization-2] > summary')
+  assert '有效 10 条 · 可整理 10 条' in stage1.inner_text()
+  for i in range(5):page.locator('[data-org-pick="1"]').nth(i).check()
+  page.locator('[data-action=org-merge2]').click();page.locator('[data-choice=later]').click()
+  page.locator('.smm-save [data-action=approve]').click();page.wait_for_function('window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories.length===11')
+  page.locator('[data-tab=organize]').click()
+  assert '有效 5 条 · 可整理 5 条' in stage1.inner_text()
+  assert '有效 1 条 · 可整理 1 条' in stage2.inner_text()
+  page.evaluate('window.handlers.CHAT_CHANGED()')
+  assert '有效 5 条 · 可整理 5 条' in stage1.inner_text()
+  page.locator('[data-tab=memories]').click()
+  assert page.locator('#smm-panel > nav button').count()==5
+  assert page.locator('[data-action=minimize]').count()==0
+  assert page.locator('[data-action=search-prev]').evaluate('e=>getComputedStyle(e).borderTopWidth')=='0px'
+  assert page.locator('#smm-search').evaluate('e=>getComputedStyle(e).borderTopWidth')=='1px'
+  page.evaluate('document.getElementById("st_memory_manager-toast")?.remove()')
+  assert page.locator('[data-action=check-short-all]').count()==0
+  assert page.locator('[data-action=export],[data-action=memory-import]').count()==0
+  assert page.locator('.smm-memory-operations button').all_text_contents()==['新增','添加到','归档／恢复','删除']
+  assert page.locator('.smm-memory-tools button').all_text_contents()==['有效记忆','归档','记忆发送预演']
+  assert page.locator('.smm-keyword-tools button').all_text_contents()==['补充关键词','关键词检测']
+  left=page.locator('.smm-memory-topline [data-source-sort]').bounding_box()
+  right=page.locator('.smm-memory-topline [data-memory-scope]').bounding_box()
+  assert abs(left['y']-right['y'])<1 and left['x']<right['x']
+  assert abs(left['width']-right['width'])<1
+  search=page.locator('.smm-searchbar').bounding_box()
+  assert search['y']+search['height']<=left['y']
+  tools=page.locator('.smm-memory-tools button').all()
+  widths=[b.bounding_box()['width'] for b in tools]
+  assert max(widths)-min(widths)<1
+  assert page.locator('.smm-memory-workspace .smm-memory-operations button').count()==4
+  assert page.locator('.smm-memory-workspace > .smm-group').count()==3
+  assert page.locator('.smm-memory-workspace').evaluate('e=>getComputedStyle(e).backgroundColor')!=page.locator('#smm-panel').evaluate('e=>getComputedStyle(e).backgroundColor')
+
+  before_api=calls.copy()
+  page.locator('[data-action=memory-add]').click()
+  page.wait_for_function('document.getElementById("st_memory_manager-toast")?.textContent.includes("请先勾选")')
+  assert page.locator('.smm-destination').count()==0 and calls==before_api
+  drawers();page.locator('[data-pick]').first.check()
+  page.locator('[data-action=memory-add]').click()
+  assert page.locator('.smm-destination [name=destination]').count()==4
+  page.locator('.smm-destination [data-cancel]').click()
+  assert page.locator('[data-pick]:checked').count()==1
+  page.locator('[data-action=memory-add]').click();page.locator('.smm-destination [value=attic]').check()
+  page.locator('.smm-destination').get_by_role('button',name='确定添加').click()
+  page.wait_for_function('window.SillyTavern.getContext().extensionSettings.st_memory_manager.attics["mock.png"].memories.length===1')
+  page.wait_for_function('!document.querySelector("[data-pick]:checked")')
+  before_api=calls.copy()
+  page.locator('[data-memory-scope]').select_option('attic')
+  assert page.locator('[data-memory-scope]').input_value()=='attic'
+  assert page.locator('.smm-card').count()==1
+  page.locator('[data-memory-scope]').select_option('chat')
+  assert page.locator('.smm-card').count()==6
+  assert calls==before_api
+  page.evaluate('document.getElementById("st_memory_manager-toast")?.remove()')
+  page.screenshot(path=str(root/'output'/f'memory-layout-v2-dark-{width}.png'))
+  page.locator('[data-action=settings-open]').click();drawers()
+  assert page.locator('[data-action=export]').count()==1 and page.locator('[data-action=memory-import]').count()==1
+  assert page.locator('[data-action=check-short-all]').count()==0
+  page.locator('[data-tab=memories]').click()
+
+  page.locator('[data-tab=organize]').click();drawers()
+  page.locator('[data-org-pick="2"]').check();page.locator('[data-action=org-merge3]').click();page.locator('[data-choice=later]').click()
+  page.locator('.smm-save [data-action=approve]').click();page.wait_for_function('window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories.length===12')
+  page.locator('[data-tab=organize]').click()
+  assert '有效 0 条 · 可整理 0 条' in stage2.inner_text()
+  assert '有效 1 条' in page.locator('[data-entry=organization-3] > summary').inner_text()
+  page.locator('[data-action=settings-open]').click();drawers()
+  page.evaluate("""()=>{const style=document.createElement('style');style.id='mock-host-input';style.textContent='input,textarea,select{background:black!important;color:white!important}';document.head.append(style);document.body.style.setProperty('--SmartThemeChatTintColor','#badcfe');document.body.style.setProperty('--SmartThemeBodyColor','#123456');}""")
+  page.locator('[data-setting=themePreset]').select_option('paper')
+  assert page.locator('[data-setting=model]').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(255, 250, 241)'
+  assert page.locator('[data-setting=model]').evaluate('e=>getComputedStyle(e).color')=='rgb(51, 47, 43)'
+  page.locator('[data-setting=themePreset]').select_option('tavern')
+  assert '#badcfe' in page.locator('[data-setting=model]').evaluate('e=>getComputedStyle(e).getPropertyValue("--smm-field-bg")')
+  assert page.locator('[data-setting=model]').evaluate('e=>getComputedStyle(e).color')=='rgb(18, 52, 86)'
+  page.locator('[data-setting=themePreset]').select_option('paper')
+  page.locator('[data-action=settings-save]').click()
+  page.locator('[data-tab=memories]').click();page.locator('[data-action=manual]').click()
+  assert page.locator('.smm-editor input[name=title]').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(255, 250, 241)'
+  page.locator('.smm-editor [data-dismiss]').click()
+  page.evaluate('document.getElementById("st_memory_manager-toast")?.remove()')
+  page.screenshot(path=str(root/'output'/f'memory-layout-v2-paper-{width}.png'))
+  page.evaluate("document.body.style.setProperty('--SmartThemeBlurTintColor','#eaf0f7')")
+  for theme in ['soft','paper','contrast','tavern']:
+   page.locator('[data-action=settings-open]').click();drawers()
+   page.locator('[data-setting=themePreset]').select_option(theme)
+   page.locator('[data-tab=memories]').click()
+   page.evaluate("document.querySelectorAll('#smm-panel details.smm-group').forEach(d=>d.open=false);document.getElementById('st_memory_manager-toast')?.remove()")
+   style=page.locator('#smm-panel').evaluate("""e=>{const search=e.querySelector('#smm-search'),workspace=e.querySelector('.smm-memory-workspace'),range=e.querySelector('[data-memory-scope]');return {theme:e.dataset.theme,searchWidth:search.getBoundingClientRect().width,searchHeight:search.getBoundingClientRect().height,rangeBg:getComputedStyle(range).backgroundColor,rangeInk:getComputedStyle(range).color,searchBg:getComputedStyle(search).backgroundColor,workspaceBg:getComputedStyle(workspace).backgroundColor,panelBg:getComputedStyle(e).getPropertyValue('--smm-bg'),horizontalOverflow:e.scrollWidth>e.clientWidth}}""")
+   assert style['theme']==theme and style['searchWidth']<=220.1 and style['searchHeight']<=32.1 and not style['horizontalOverflow'],style
+   expected={'soft':'rgb(241, 244, 248)','paper':'rgb(51, 47, 43)','contrast':'rgb(255, 255, 255)','tavern':'rgb(18, 52, 86)'}
+   assert style['rangeInk']==expected[theme],style
+   assert style['workspaceBg']!='rgba(0, 0, 0, 0)',style
+   theme_checks.append(style)
+   page.screenshot(path=str(root/'output'/f'memory-v073-theme-{theme}-{width}.png'))
+  page.locator('[data-action=settings-open]').click();drawers();page.locator('[data-setting=themePreset]').select_option('paper')
+  page.locator('[data-tab=memories]').click()
+  drawers();page.locator('[data-pick]').first.check();page.locator('[data-action=memory-add]').click()
+  page.screenshot(path=str(root/'output'/f'memory-layout-v2-add-{width}.png'))
+  page.locator('.smm-destination [data-cancel]').click()
+  page.locator('[data-pick]:checked').uncheck()
+
+  page.evaluate("document.getElementById('mock-host-input').remove()")
   # Hold a request to resize, drag, cancel, and verify persisted dimensions and stopped batch queue.
   page.locator('[data-tab=summary]').click();drawers();page.locator('#smm-batch-start').fill('10');page.locator('#smm-batch-end').fill('19');page.locator('[data-setting=batchSize]').fill('5');hold['value']=True;before=calls['summary'];page.locator('[data-action=batch-start]').click()
   for _ in range(100):
@@ -359,7 +498,7 @@ with sync_playwright() as p:
   held.clear()
   assert page.locator('#smm-floating-progress').is_hidden()
   assert errors==[],errors
-  results.append({'width':width,'calls':calls,'defaults':True,'continuousBatches':True,'saveAll':True,'ignoreGaps':True,'autoCursor':True,'tourCenteredSettingsFirst':True,'fixedFooter':True,'legacyDeleteHiddenUntouched':True,'statusUpdateRollbackAndNotice':True,'clearSelection':True,'aiAndMixedClassification':True,'resizableCancellableProgress':True})
+  results.append({'width':width,'calls':calls,'defaults':True,'continuousBatches':True,'saveAll':True,'ignoreGaps':True,'autoCursor':True,'tourCenteredSettingsFirst':True,'fixedFooter':True,'legacyDeleteHiddenUntouched':True,'statusUpdateRollbackAndNotice':True,'clearSelection':True,'aiAndMixedClassification':True,'resizableCancellableProgress':True,'themeChecks':theme_checks})
   page.close()
  browser.close();(root/'output'/'v072-browser-results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding='utf-8');print(json.dumps(results,ensure_ascii=False))
 server.shutdown()

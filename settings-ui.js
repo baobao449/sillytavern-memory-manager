@@ -1,6 +1,6 @@
-import {help} from './ui-help.js?v=0.7.2';
-import {appearanceView} from './appearance.js?v=0.7.2';
-import {PROMPT_LIBRARY,FIELDS,escapeHtml as h,outputFormat} from './core.js?v=0.7.2';
+import {help} from './ui-help.js?v=0.7.3';
+import {appearanceView} from './appearance.js?v=0.7.3';
+import {PROMPT_LIBRARY,FIELDS,escapeHtml as h,outputFormat} from './core.js?v=0.7.3';
 
 export function settingsView(s,models,key,books,checkKey='',checkModels=[],repairKey='',repairModels=[]){
  const variant=s.promptVariant==='extended'?'extended':'original';if(s.promptVariant!=='custom')s={...s,...PROMPT_LIBRARY[variant]};
@@ -35,5 +35,5 @@ export function settingsView(s,models,key,books,checkKey='',checkModels=[],repai
  drawer('检查与资料优先级','首版 AI 检查和阶段约束',priority)+
  drawer('总结要求与提示词','长期要求与可导入的条目组',prompts)+
  drawer('外观与窗口','主题、字体、按钮层级和自定义样式',appearance)+
- drawer('记忆操作备份','当前聊天操作快照',backup)+drawer('插件版本与更新','通过酒馆更新接口获取新版本',b('plugin-update','检查并更新插件'));
+ drawer('聊天记忆导入与导出','只处理当前聊天的记忆，不包含 API 密钥',b('export','导出本聊天记忆')+b('memory-import','导入本聊天记忆'))+drawer('记忆操作备份','当前聊天操作快照',backup)+drawer('插件版本与更新','通过酒馆更新接口获取新版本',b('plugin-update','检查并更新插件'));
 }

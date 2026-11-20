@@ -1,6 +1,6 @@
-import {help} from './ui-help.js?v=0.7.2';
+import {help} from './ui-help.js?v=0.7.3';
 // Visual controls share one validated source for live preview and saved settings.
-import {escapeHtml as h} from './core.js?v=0.7.2';
+import {escapeHtml as h} from './core.js?v=0.7.3';
 
 export const FONT_PRESETS={system:'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',sans:'"PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif',serif:'"Songti SC", SimSun, "Noto Serif CJK SC", serif',kai:'KaiTi, STKaiti, "Kaiti SC", serif',mono:'ui-monospace, "Cascadia Mono", Consolas, "Microsoft YaHei", monospace'};
 export function fontCss(name){return `#smm-panel{font-family:${name==='tavern'?'var(--smm-tavern-font, inherit)':FONT_PRESETS[name]||FONT_PRESETS.system}}#smm-panel input,#smm-panel textarea,#smm-panel select,#smm-panel button{font-family:inherit}`;}
@@ -15,7 +15,7 @@ export function normalizeAppearance(value={}){
 }
 export function appearanceCss(value){
  const v=normalizeAppearance(value);let css=`#smm-panel{font-size:${v.fontSize}px;--smm-space:${v.spacing}px;--smm-nav-min-width:${Math.max(60,v.levels[1].size*3.5)}px}#smm-panel .smm-card,#smm-panel .smm-group,#smm-panel .smm-content{border-radius:${v.cardRadius}px}`;
- for(let n=1;n<=3;n++){const t=v.levels[n],selector=`#smm-panel [data-button-level="${n}"]`;
+ for(let n=1;n<=3;n++){const t=v.levels[n],selector=`#smm-panel [data-button-level="${n}"]:not(:where(nav *,header *, .smm-tool-row *, .smm-searchbar *))`;
   css+=`${selector}{font-size:${t.size}px;border-radius:${t.radius}px;padding:${t.padding}px ${t.padding+3}px;border-width:${t.border}px;text-align:${t.align};`;
   if(t.fill==='filled')css+=`background:${t.colors?t.background:'var(--smm-button-1-bg)'};border-style:solid;border-color:${t.colors?t.borderColor:'var(--smm-accent)'};`;
   if(t.fill==='outline')css+=`background:transparent;border-style:solid;border-color:${t.colors?t.borderColor:'var(--smm-accent)'};`;
@@ -24,7 +24,7 @@ export function appearanceCss(value){
   css+='}';
  }
  // Keep compact utility controls compact regardless of general tier padding.
- css+='#smm-panel>header button{padding:0;font-size:23px}#smm-panel .smm-copy{padding:3px 6px;font-size:12px}';
+ css+='#smm-panel>header button{padding:0;font-size:21px}#smm-panel .smm-copy{padding:3px 6px;font-size:12px}';
  return css;
 }
 export function appearanceView(value){
