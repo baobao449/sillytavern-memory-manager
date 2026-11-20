@@ -1,6 +1,6 @@
-import {help} from './ui-help.js?v=0.7.4';
-import {appearanceView} from './appearance.js?v=0.7.4';
-import {PROMPT_LIBRARY,FIELDS,DEFAULTS,escapeHtml as h,outputFormat} from './core.js?v=0.7.4';
+import {help} from './ui-help.js?v=0.7.5';
+import {appearanceView} from './appearance.js?v=0.7.5';
+import {PROMPT_LIBRARY,FIELDS,DEFAULTS,escapeHtml as h,outputFormat} from './core.js?v=0.7.5';
 
 export function settingsView(s,models,key,books,checkKey='',checkModels=[],repairKey='',repairModels=[]){
  s={...s,modes:{...DEFAULTS.modes,...s.modes},sendFields:{...DEFAULTS.sendFields,...s.sendFields}};

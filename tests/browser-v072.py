@@ -418,7 +418,7 @@ with sync_playwright() as p:
   page.evaluate('document.getElementById("st_memory_manager-toast")?.remove()')
   assert page.locator('[data-action=check-short-all]').count()==0
   assert page.locator('[data-action=export],[data-action=memory-import]').count()==0
-  assert page.locator('.smm-memory-operations button').all_text_contents()==['新增','添加到','归档／恢复','删除']
+  assert page.locator('.smm-memory-operations button').all_text_contents()==['新增','添加到','归档／恢复','删除','清空']
   assert page.locator('.smm-memory-tools button').all_text_contents()==['有效记忆','归档','记忆发送预演']
   assert page.locator('.smm-keyword-tools button').all_text_contents()==['补充关键词','关键词检测']
   left=page.locator('.smm-memory-topline [data-source-sort]').bounding_box()
@@ -430,7 +430,7 @@ with sync_playwright() as p:
   tools=page.locator('.smm-memory-tools button').all()
   widths=[b.bounding_box()['width'] for b in tools]
   assert max(widths)-min(widths)<1
-  assert page.locator('.smm-memory-workspace .smm-memory-operations button').count()==4
+  assert page.locator('.smm-memory-workspace .smm-memory-operations button').count()==5
   assert page.locator('.smm-memory-workspace > .smm-group').count()==3
   assert page.locator('.smm-memory-workspace').evaluate('e=>getComputedStyle(e).backgroundColor')!=page.locator('#smm-panel').evaluate('e=>getComputedStyle(e).backgroundColor')
 
@@ -513,13 +513,83 @@ with sync_playwright() as p:
   box=page.locator('#smm-floating-progress header strong').bounding_box();page.mouse.move(box['x']+20,box['y']+5);page.mouse.down();page.mouse.move(box['x']+25,box['y']+45);page.mouse.up();page.wait_for_timeout(200)
   persisted=page.evaluate('JSON.parse(localStorage.getItem("st_memory_manager:window-size-v1:progress"))');assert persisted['width']==size['width'] and persisted['position']['top']>0
   page.screenshot(path=str(root/'output'/f'v072-progress-{width}.png'))
-  page.locator('#smm-floating-progress [data-cancel]').click();page.get_by_role('button',name='重试失败批',exact=True).wait_for();page.wait_for_timeout(200);assert calls['summary']==before+1
+  page.locator('#smm-floating-progress [data-cancel]').click();page.get_by_role('button',name='继续下一批',exact=True).wait_for();page.wait_for_timeout(200);assert calls['summary']==before+1
   hold['value']=False
   for route,response in held:
    try:route.fulfill(json=response)
    except Exception:pass
   held.clear()
   assert page.locator('#smm-floating-progress').is_hidden()
+  # Clear the previous paused batch and confirm two manual HTTP requests can be active together.
+  page.locator('[data-action=batch-cancel]').click()
+  page.locator('[data-tab=summary]').click();drawers();hold['value']=True
+  def submit_summary(start,end):
+   page.locator('#smm-start').fill(str(start));page.locator('#smm-end').fill(str(end))
+   page.locator('#smm-hide1').uncheck()
+   page.locator('[data-action=summarize]').click()
+  def wait_held(n):
+   for _ in range(140):
+    if len(held)>=n:break
+    page.wait_for_timeout(25)
+   assert len(held)==n,len(held)
+  # Any previously retained draft can remain in pending while new work runs.
+  submit_summary(10,11)
+  new=page.locator('dialog[open] [data-choice=new]')
+  if new.count():new.click()
+  wait_held(1)
+  submit_summary(12,13);wait_held(2)
+  statuses=page.locator('.smm-progress-board [data-smm-task-status]').first
+  assert statuses.get_by_role('button',name='取消',exact=True).count()==2
+  assert '第10-11楼' in statuses.inner_text() and '第12-13楼' in statuses.inner_text()
+  page.locator('#smm-floating-progress [data-close]').click()
+  failed,_=held.pop(0);failed.fulfill(json={'error':{'message':'模拟并发失败','code':'test_failure'}})
+  page.wait_for_function("document.querySelectorAll('.smm-progress-board [data-task]').length===1")
+  assert '第12-13楼' in statuses.inner_text()
+  # A third request can start as soon as the failure releases one slot.
+  submit_summary(14,15);wait_held(2)
+  if page.locator('#smm-floating-progress [data-close]').is_visible():page.locator('#smm-floating-progress [data-close]').click()
+  statuses.scroll_into_view_if_needed()
+  page.screenshot(path=str(root/'output'/f'v075-concurrent-{width}.png'))
+  statuses.get_by_text('第14-15楼',exact=False).get_by_role('button',name='取消',exact=True).click()
+  page.wait_for_function("document.querySelectorAll('.smm-progress-board [data-task]').length===1")
+  survivor,response=held.pop(0);survivor.fulfill(json=response)
+  cancelled,response=held.pop(0)
+  try:cancelled.fulfill(json=response)
+  except Exception:pass
+  page.wait_for_function("document.querySelector('[data-tab=draft]').classList.contains('active') && document.querySelector('header .smm-actions')")
+  page.locator('[data-tab=summary]').click()
+  page.wait_for_function("document.querySelector('[data-smm-task-status]')?.textContent==='空闲'")
+  assert page.locator('#smm-floating-progress').is_hidden()
+  # Two successful jobs retain two independent drafts.
+  submit_summary(16,17)
+  if new.count():new.click()
+  wait_held(1)
+  submit_summary(18,19);wait_held(2)
+  for route,response in held:route.fulfill(json=response)
+  held.clear()
+  page.locator('[data-tab=draft]').click()
+  page.wait_for_function("""()=>{const raw=localStorage.getItem('st_memory_manager:session:character:mock.png::flow-test');const v=JSON.parse(raw||'null');const ranges=[v?.draft,...(v?.pendingDrafts||[]).map(e=>e.draft),...(v?.draftVersions||[])].map(x=>x?.rangeLabel);return ranges.includes('第16-17楼')&&ranges.includes('第18-19楼');}""")
+  # A live request must not restore any draft after a clear.
+  page.locator('[data-tab=summary]').click()
+  submit_summary(20,21)
+  if new.count():new.click()
+  wait_held(1)
+  # Drop all chat-owned data, including archived memories, logs and snapshots. Keep other chats and the attic.
+  page.evaluate("""async()=>{const c=window.SillyTavern.getContext(),ns='st_memory_manager',st=c.chatMetadata[ns];st.ignoredFloors=[16];st.recall={old:{until:91}};st.memories.push({id:'clear-archive',title:'本聊归档',summary:'本聊归档',status:'archived',kind:'short',sources:[16],details:{},keywords:[]});c.chat[0].is_system=true;const shared=c.extensionSettings[ns].attics??={};shared['mock.png']={memories:[{id:'surviving-attic',title:'保留阁楼',summary:'保留阁楼',status:'active',kind:'fixed',sources:[],details:{},keywords:[]}]};localStorage.setItem(ns+':session:other-chat','other session');const DB=await import('/runtime.js');await DB.record('logs',{id:'other-log',chat:'other-chat'});await DB.record('snapshots',{id:'other-snapshot',chat:'other-chat'});}""")
+  page.locator('[data-tab=memories]').click()
+  page.locator('[data-memory-scope]').select_option('attic')
+  page.locator('[data-action=memory-clear]').click()
+  page.wait_for_function("""()=>{const c=window.SillyTavern.getContext(),s=c.chatMetadata.st_memory_manager;return !s.memories.length&&!s.batches.length&&!s.ignoredFloors&&Object.keys(s.recall).length===0&&s.options.startFloor===0&&s.options.autoStartFloor===0&&document.querySelector('[data-memory-scope]')?.value==='chat'}""")
+  route,response=held.pop(0)
+  try:route.fulfill(json=response)
+  except Exception:pass
+  hold['value']=False
+  assert page.evaluate("""async()=>{const c=window.SillyTavern.getContext(),db=await import('/runtime.js');return c.chat[0].is_system&&c.extensionSettings.st_memory_manager.attics['mock.png'].memories[0].id==='surviving-attic'&&localStorage.getItem('st_memory_manager:session:other-chat')==='other session'&&(await db.records('logs')).every(x=>x.chat==='other-chat')&&(await db.records('snapshots')).every(x=>x.chat==='other-chat')&&(await db.records('logs')).some(x=>x.id==='other-log')&&(await db.records('snapshots')).some(x=>x.id==='other-snapshot');}""")
+  page.locator('[data-tab=draft]').click()
+  assert '没有待确认草稿' in page.locator('.smm-body').inner_text()
+  page.locator('[data-tab=summary]').click()
+  assert page.locator('#smm-start').input_value()=='0'
+  assert '开始自动总结' in page.locator('#smm-auto-status').text_content()
   assert errors==[],errors
   results.append({'width':width,'calls':calls,'defaults':True,'continuousBatches':True,'saveAll':True,'ignoreGaps':True,'autoCursor':True,'tourCenteredSettingsFirst':True,'fixedFooter':True,'legacyDeleteHiddenUntouched':True,'statusUpdateRollbackAndNotice':True,'clearSelection':True,'aiAndMixedClassification':True,'resizableCancellableProgress':True,'themeChecks':theme_checks})
   page.close()

@@ -1,4 +1,4 @@
-import {escapeHtml as h,selectMemories,buildInjection} from './core.js?v=0.7.4';
+import {escapeHtml as h,selectMemories,buildInjection} from './core.js?v=0.7.5';
 export const characters=value=>{let n=0;for(const _ of String(value??''))n++;return n;};
 export function sortMemories(items,direction='asc'){
  const key=m=>{const a=(m.selectedFloors?.length?m.selectedFloors:m.sources||[]).filter(Number.isInteger);return a.length?Math.min(...a):Number.MAX_SAFE_INTEGER;};

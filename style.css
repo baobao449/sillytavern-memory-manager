@@ -206,7 +206,7 @@ html[data-smm-theme=tavern],#smm-panel[data-theme=tavern]{
 #smm-panel .smm-memory-topline{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin:4px 0 10px}
 #smm-panel .smm-memory-topline :is(.smm-source-sort,.smm-scope-control){display:flex;flex-direction:column;align-items:stretch;gap:5px;min-width:0;margin:0;font-size:.82em}
 #smm-panel .smm-memory-topline select{width:100%;min-width:0;margin:0;padding:7px 9px;min-height:38px;font-size:1em}
-#smm-panel .smm-memory-operations>.smm-tool-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+#smm-panel .smm-memory-operations>.smm-tool-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
 #smm-panel .smm-memory-operations>.smm-tool-row button{padding:6px 3px;white-space:nowrap}
 #smm-panel .smm-keyword-tools{display:inline-flex;gap:4px;align-items:center;margin-left:auto}
 #smm-panel .smm-keyword-tools button{font-size:.75em;padding:3px 5px;min-height:28px;margin:0;border:0;background:transparent}
@@ -246,3 +246,6 @@ html[data-smm-theme=tavern],#smm-panel[data-theme=tavern]{
  background:color-mix(in srgb,var(--smm-bg) 96%,#fff 4%)!important;
 }
 #smm-panel .smm-body>.smm-searchbar button{height:30px;min-height:30px!important;padding:4px 6px!important}
+
+#smm-panel .smm-current-task{margin-block:8px}
+#smm-panel .smm-current-task [data-action="task-cancel"]{font-size:.85em;padding:2px 6px;margin-inline-start:4px}
