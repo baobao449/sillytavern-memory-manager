@@ -1,7 +1,7 @@
-import {apiFailure,emptyCompletion} from './api-errors.js?v=0.7.3';
-import {nativeRequest,canonicalNative,readNative} from './native-api.js?v=0.7.3';
-import {summarySchema} from './output-contract.js?v=0.7.3';
-import {readCompletion} from './stream-reader.js?v=0.7.3';
+import {apiFailure,emptyCompletion} from './api-errors.js?v=0.7.4';
+import {nativeRequest,canonicalNative,readNative} from './native-api.js?v=0.7.4';
+import {summarySchema} from './output-contract.js?v=0.7.4';
+import {readCompletion} from './stream-reader.js?v=0.7.4';
 export class ApiClient {
  constructor(settings,log,context){this.settings=settings;this.log=log;this.context=context;this.key='';this.controller=null;this.cachedModels=null;}
  cancel(){this.controller?.abort('cancelled');}

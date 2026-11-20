@@ -1,5 +1,5 @@
-import {STATUS_UPDATE_RULES} from './status-updates.js?v=0.7.3';
-import {summaryPrompt,outputFormat} from './core.js?v=0.7.3';
+import {STATUS_UPDATE_RULES} from './status-updates.js?v=0.7.4';
+import {summaryPrompt,outputFormat} from './core.js?v=0.7.4';
 
 // This same builder is used by request preview and the actual request.
 export function buildSummaryMessages(s,sources,refs,temporary='',parents=false,level=1,rewrite=null,workflow=''){

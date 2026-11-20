@@ -32,7 +32,7 @@ with sync_playwright() as p:
    elif 'draft' in payload:
     calls['check']+=1;check_sizes.append(len(payload['draft']));content=json.dumps({'issues':[{'id':payload['draft'][0]['id'],'message':'核对时间','suggestion':'不要推断日期','quote':'阿宁持有铜印','field':'summary'}]},ensure_ascii=False)
    else:
-    calls['summary']+=1;floors=[s['floor'] for s in payload['sources']];content=json.dumps({'memories':[{'title':'测试记忆'+str(calls['summary']),'summary':'阿宁持有铜印，等待赴约。','sources':floors,'brief':'等待赴约','keywords':['铜印','赴约'],'suggestedKind':'long','details':{'quotes':['真实原话。']}}]},ensure_ascii=False)
+    calls['summary']+=1;floors=[s['floor'] for s in payload['sources']];content=json.dumps({'memories':[{'title':'测试记忆'+str(calls['summary']),'summary':'阿宁持有铜印，等待赴约。','sources':floors,'brief':'等待赴约','keywords':['铜印','赴约'],'suggestedKind':'long','details':{'quotes':['真实原话。'],'characters':'阿宁：本次持有铜印的人。'}}]},ensure_ascii=False)
    if behavior.get('checkFail') and 'draft' in payload:
     route.fulfill(json={'error':{'message':'模拟检查线路失败','code':'check_unavailable'}});return
    if behavior.get('status') and 'sources' in payload:
@@ -57,6 +57,24 @@ with sync_playwright() as p:
   assert page.locator('[data-setting=promptVariant]').input_value()=='extended'
   assert page.locator('[data-setting=themePreset]').input_value()=='tavern'
   assert page.locator('[data-mode=quotes]').input_value()=='off'
+
+  assert page.locator('[data-mode=characters]').input_value()=='separate'
+  # Example is a closed disclosure even inside an expanded parent drawer.
+  example=page.locator('[data-output-example]');example.locator('xpath=ancestor::details[1]').evaluate('(e)=>e.open=false')
+  assert not example.is_visible()
+  example.locator('xpath=ancestor::details[1]').locator('summary').click()
+  page.locator('[data-setting=outputMode]').select_option('tags')
+  assert '<stm4-characters>' in example.inner_text()
+  page.locator('[data-mode=characters]').select_option('off')
+  assert '<stm4-characters>' not in example.inner_text()
+  page.locator('[data-mode=characters]').select_option('separate')
+  page.locator('[data-setting=outputMode]').select_option('plain')
+  assert '人物：' in example.inner_text()
+  page.locator('[data-setting=outputMode]').select_option('json')
+  assert 'characters' in example.inner_text()
+  example.scroll_into_view_if_needed();page.screenshot(path=str(root/'output'/f'v074-output-characters-{width}.png'))
+  page.locator('[data-mode=characters]').scroll_into_view_if_needed();page.screenshot(path=str(root/'output'/f'v074-characters-{width}.png'))
+
   # Built-in archive restores requested options without touching API credentials.
   page.locator('[data-setting=baseUrl]').fill('https://example.invalid/v1');page.locator('[data-setting=model]').fill('mock-model');page.locator('#smm-key').fill('fake-test-only')
   page.get_by_role('button',name='保存设置',exact=True).click();drawers()
@@ -120,6 +138,11 @@ with sync_playwright() as p:
   page.locator('[data-action=pending-select]').click();page.locator('[data-action=approve-all]').click()
   page.wait_for_function('window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories.length===2')
   page.wait_for_function('!document.querySelector("[data-action=approve-all]")')
+  assert page.evaluate('window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories.every(m=>m.details.characters==="阿宁：本次持有铜印的人。")')
+  page.get_by_role('button',name='记忆',exact=True).click();drawers()
+  assert page.locator('.smm-card').first.locator('h4').filter(has_text='人物').count()==1
+  assert '阿宁：本次持有铜印的人。' in page.locator('.smm-card').first.inner_text()
+
   assert page.locator('#smm-floating-progress').is_hidden()
   page.get_by_role('button',name='总结',exact=True).click();assert page.locator('#smm-start').input_value()=='10';assert page.locator('#smm-batch-start').input_value()=='10';assert '第10-' in page.locator('#smm-auto-status').text_content()
   # Legacy stale automatic cursor ignores old holes; ignore merges the progress ranges.

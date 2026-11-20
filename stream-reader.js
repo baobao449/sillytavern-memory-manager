@@ -1,4 +1,4 @@
-import {apiFailure} from './api-errors.js?v=0.7.3';
+import {apiFailure} from './api-errors.js?v=0.7.4';
 // All bodies are read incrementally, including non-streaming JSON, for useful diagnostics.
 export function bodyReader(response,onBytes=()=>{},signal){
  const reader=response.body?.getReader(),decoder=new TextDecoder();let bytes=0,closed=false;
