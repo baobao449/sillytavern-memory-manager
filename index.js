@@ -1,30 +1,32 @@
-import {statusCandidates,applyStatusUpdates} from './status-updates.js?v=0.7.5';
-import {installDialogLayout} from './dialog-layout.js?v=0.7.5';
-import {sortMemories,characters,markedText,keywordHealth,savePreview} from './experience.js?v=0.7.5';
-import {issueView} from './review-ui.js?v=0.7.5';
-import {rehearsalDialog} from './rehearsal.js?v=0.7.5';
-import {reconcileCoverage,rewindStarts} from './coverage.js?v=0.7.5';
-import {saveSession,loadSession,nextFloor,coveredFloors,automaticStart,countInstruction} from './session-state.js?v=0.7.5';
-import {defaultProfileOptions,DEFAULT_PROFILE_ID} from './default-settings.js?v=0.7.5';
-import {keywordDialog} from './keywords.js?v=0.7.5';
-import {updatePlugin} from './updater.js?v=0.7.5';
-import {startTour} from './tour.js?v=0.7.5';
-import {help} from './ui-help.js?v=0.7.5';
-import {buildSummaryMessages} from './summary-request.js?v=0.7.5';
-import {summaryLevelLabel,automaticMerge,mergeCandidates} from './summary-rules.js?v=0.7.5';
-import {appearanceCss,readAppearance,normalizeAppearance,fontCss} from './appearance.js?v=0.7.5';
-import {manualMemoryDialog} from './manual-memory.js?v=0.7.5';
-import {floorLabel,hideFloors,pendingHideFloors,textDialog,compareMemories,quoteChecks,normalizeIssues,compactReviewNotes,mapReviewedRewrite} from './memory-tools.js?v=0.7.5';
-import {repairMessages,checkRepairMessages} from './formats.js?v=0.7.5';
-import {requestBreakdown,usageView,requestView,bindRequestView} from './request-view.js?v=0.7.5';
-import {summaryView,sourceView,countControls} from './summary-ui.js?v=0.7.5';
-import {createProgress} from './progress.js?v=0.7.5';
-import {bindPanelMovement} from './panel.js?v=0.7.5';
-import {settingsView as renderSettings} from './settings-ui.js?v=0.7.5';
-import {NS,VERSION,FIELDS,DEFAULTS,newStore,escapeHtml as h,sourceSnapshot,sourceSnapshotAsync,validateDraft,parseJson,eligibleRange,selectMemories,buildInjection,summaryPrompt,priorityInstruction,outputFormat,presetEntries} from './core.js?v=0.7.5';
-import {context,runtime,chatKey,characterKey,record,records,readRecord,logHeads,deleteRecords,download,ApiClient,nativeHide,worldBooks,isMainGenerating} from './runtime.js?v=0.7.5';
+import {installLaunchers} from './launchers.js?v=0.7.6';
+import {statusCandidates,applyStatusUpdates} from './status-updates.js?v=0.7.6';
+import {installDialogLayout} from './dialog-layout.js?v=0.7.6';
+import {sortMemories,characters,markedText,keywordHealth,savePreview} from './experience.js?v=0.7.6';
+import {issueView} from './review-ui.js?v=0.7.6';
+import {rehearsalDialog} from './rehearsal.js?v=0.7.6';
+import {reconcileCoverage,rewindStarts} from './coverage.js?v=0.7.6';
+import {saveSession,loadSession,nextFloor,coveredFloors,automaticStart,countInstruction} from './session-state.js?v=0.7.6';
+import {defaultProfileOptions,DEFAULT_PROFILE_ID} from './default-settings.js?v=0.7.6';
+import {keywordDialog} from './keywords.js?v=0.7.6';
+import {updatePlugin} from './updater.js?v=0.7.6';
+import {startTour} from './tour.js?v=0.7.6';
+import {help} from './ui-help.js?v=0.7.6';
+import {buildSummaryMessages} from './summary-request.js?v=0.7.6';
+import {summaryLevelLabel,automaticMerge,mergeCandidates} from './summary-rules.js?v=0.7.6';
+import {appearanceCss,readAppearance,normalizeAppearance,fontCss} from './appearance.js?v=0.7.6';
+import {manualMemoryDialog} from './manual-memory.js?v=0.7.6';
+import {floorLabel,hideFloors,pendingHideFloors,textDialog,compareMemories,quoteChecks,normalizeIssues,compactReviewNotes,mapReviewedRewrite} from './memory-tools.js?v=0.7.6';
+import {repairMessages,checkRepairMessages} from './formats.js?v=0.7.6';
+import {requestBreakdown,usageView,requestView,bindRequestView} from './request-view.js?v=0.7.6';
+import {summaryView,sourceView,countControls} from './summary-ui.js?v=0.7.6';
+import {createProgress} from './progress.js?v=0.7.6';
+import {bindPanelMovement} from './panel.js?v=0.7.6';
+import {settingsView as renderSettings} from './settings-ui.js?v=0.7.6';
+import {NS,VERSION,FIELDS,DEFAULTS,newStore,escapeHtml as h,sourceSnapshot,sourceSnapshotAsync,validateDraft,parseJson,eligibleRange,selectMemories,buildInjection,summaryPrompt,priorityInstruction,outputFormat,presetEntries} from './core.js?v=0.7.6';
+import {context,runtime,chatKey,characterKey,record,records,readRecord,logHeads,deleteRecords,download,ApiClient,nativeHide,worldBooks,isMainGenerating} from './runtime.js?v=0.7.6';
 
 async function initializeMemoryManager(){
+if(document.getElementById('smm-entry'))return;
 installDialogLayout();document.addEventListener('change',e=>{const key=e.target.dataset.statusUpdate;if(key!==undefined&&draft?.statusUpdates?.[Number(key)])draft.statusUpdates[Number(key)].selected=e.target.checked;});document.addEventListener('click',e=>{if(e.target.closest('#smm-panel summary button'))e.preventDefault();});
 // 按范围总结剧情，编辑确认后保存；支持关键词记忆、角色共享、原生隐藏及完整调用日志。
 const api=runtime();const windowId=crypto.randomUUID();
@@ -132,7 +134,7 @@ function card(m){const issues=tab==='draft'?(draft?.checked?draft.issues:draft?.
 function checkRawView(){if(tab!=='draft'||(!draft?.checked&&!draft?.reviewHistory))return '';const report=draft.checked?draft:draft.reviewHistory;return '<section class=\"smm-content\"><h4>AI检查原始回复</h4><details><summary>展开原始回复</summary><pre>'+h(report.checkRaw||'')+'</pre></details>'+(report.checkRepairRaw?'<details><summary>展开格式修复后的回复</summary><pre>'+h(report.checkRepairRaw)+'</pre></details>':'')+'</section>';}
 function globalIssuesView(){if(tab!=='draft'||(!draft?.checked&&!draft?.reviewHistory))return '';const report=draft.checked?draft:draft.reviewHistory;const issues=report.issues.filter(i=>!draft.items.some(m=>m.id===i.id));return issues.length?'<details class="smm-group smm-issues"><summary>未定位到单条的检查意见 · '+issues.length+'项</summary><ul>'+issues.map(issueView).join('')+'</ul></details>':'';}
 
-function settingsView(){return renderSettings({...settings,...pendingProfileOptions,...appearanceDraft,connectionPresets:keyProfiles},models,client.key,selectedBooks(),checkClient.key,checkModels,repairClient.key,repairModels);}
+function settingsView(){return renderSettings({...settings,...pendingProfileOptions,...appearanceDraft,connectionPresets:keyProfiles},models,client.key,selectedBooks(),checkClient.key,checkModels,repairClient.key,repairModels,launcherSettings());}
 
 function intervalLabel(values){const sorted=[...new Set(values)].filter(Number.isInteger).sort((a,b)=>a-b),groups=[];for(const n of sorted){const last=groups.at(-1);if(last&&n===last[1]+1)last[1]=n;else groups.push([n,n]);}return groups.map(([a,b])=>`第${a}-${b}楼`).join('、')||'无';}
 function summaryStatus(st,automatic=false){const chat=api.chat(),done=coveredFloors(st),hidden=chat.map((m,i)=>m.is_system?i:null).filter(Number.isInteger),range=eligibleRange(chat,st,{...settings,keepRecent:0},automaticStart(store(),settings.autoStartFloor),settings.autoBatchSize),uncovered=chat.map((_,i)=>i).filter(i=>!done.includes(i));return `<section class="smm-progress-board"><h3>${automatic?'自动总结状态':'当前聊天处理进度'}</h3>${!automatic?`<p>已保存总结：${h(intervalLabel(done))}</p><p>已隐藏楼层：${h(intervalLabel(hidden))}</p><p>尚未总结：${h(intervalLabel(uncovered))} ${uncovered.length?btn('ignore-floors','忽略'):''}</p>${st.ignoredFloors?.length?'<p>其中手动忽略：'+h(intervalLabel(st.ignoredFloors))+' '+btn('ignore-reset','取消忽略')+'</p>':''}`:''}${automatic?`<p>下一自动范围：${range?`第${range.start}-${range.end}楼 · ${range.complete?'已达到触发数量':'等待新消息'}`:'暂无可处理范围'}</p><p>当前自动起始楼层：${range?.start??automaticStart(st,settings.autoStartFloor)}楼</p><p>自动总结：${settings.autoSummary?(autoPaused?'已暂停':'已启用'):'未启用'} · 起点 ${automaticStart(st,settings.autoStartFloor)} 楼 · 每次 ${Number(settings.autoBatchSize)||1} 条</p><div class="smm-actions">${btn('auto-toggle',settings.autoSummary&&!autoPaused?'暂停自动总结':'开始自动总结')}${btn('settings-shortcut','自动总结设置')}</div>`:''}${!automatic?'<div class="smm-current-task">当前任务<div data-smm-task-status>'+taskStatusView()+'</div></div>':''}${batchQueue.length||batchRunning?'<p>批量已保存 '+batchLedger.filter(b=>b.status==='saved').length+'/'+batchTotal+' 批</p>':''}</section>`;}
@@ -579,7 +581,8 @@ function bind(){const c=context();const on=(name,fn)=>{if(c.eventTypes[name])api
 restoreSession();
 const host=document.querySelector('#extensionsMenu')||document.querySelector('#extensions_settings');
 if(!host)throw Error('未找到扩展菜单');
-if(!document.getElementById('smm-entry')){const entry=document.createElement('div');entry.id='smm-entry';entry.className='list-group-item flex-container flexGap5 interactable';entry.tabIndex=0;entry.innerHTML='<i class="fa-solid fa-layer-group" aria-hidden="true"></i><span>酒馆记忆管理器</span>';entry.onclick=open;entry.onkeydown=e=>{if(e.key==='Enter')open();};host.append(entry);bind();setTimeout(()=>historyReminder().catch(report),500);window.addEventListener('pagehide',()=>{persistSession();job?.controller.abort();client.cancel();checkClient.cancel();repairClient.cancel();api.prompt.clear();},{once:true});}
+const launcherSettings=installLaunchers(VERSION,open);
+const entry=document.createElement('div');entry.id='smm-entry';entry.className='list-group-item flex-container flexGap5 interactable';entry.tabIndex=0;entry.innerHTML='<i class="fa-solid fa-layer-group" aria-hidden="true"></i><span>酒馆记忆管理器</span>';entry.onclick=open;entry.onkeydown=e=>{if(e.key==='Enter')open();};host.append(entry);bind();setTimeout(()=>historyReminder().catch(report),500);window.addEventListener('pagehide',()=>{persistSession();job?.controller.abort();client.cancel();checkClient.cancel();repairClient.cancel();api.prompt.clear();},{once:true});
 
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>initializeMemoryManager().catch(e=>console.error('[记忆管理器]',e)),{once:true});else initializeMemoryManager().catch(e=>console.error('[记忆管理器]',e));

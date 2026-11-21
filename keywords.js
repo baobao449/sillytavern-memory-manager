@@ -1,4 +1,4 @@
-import {escapeHtml as h} from './core.js?v=0.7.5';
+import {escapeHtml as h} from './core.js?v=0.7.6';
 const stop=new Set(['测试','剧情','内容','条目','角色','动作','事情','对方','两人','众人','一边','开始','继续','发现','表示','说道','告诉','认为','知道','觉得','随后','此时','这里','那里','我们','你们','一些','一次','时候','情况','问题','可能','应该','需要','终于','仍然','这个','那个','他们','自己','已经','没有','进行','之后','之前','时候','可以','因为','所以','一个','记忆','总结','什么','这样','不是','就是','但是','然后']);
 let segmenter;try{segmenter=new Intl.Segmenter('zh',{granularity:'word'});}catch{}
 function addWords(counts,text,weight=1){

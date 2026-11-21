@@ -1,8 +1,8 @@
-import {help} from './ui-help.js?v=0.7.5';
-import {appearanceView} from './appearance.js?v=0.7.5';
-import {PROMPT_LIBRARY,FIELDS,DEFAULTS,escapeHtml as h,outputFormat} from './core.js?v=0.7.5';
+import {help} from './ui-help.js?v=0.7.6';
+import {appearanceView} from './appearance.js?v=0.7.6';
+import {PROMPT_LIBRARY,FIELDS,DEFAULTS,escapeHtml as h,outputFormat} from './core.js?v=0.7.6';
 
-export function settingsView(s,models,key,books,checkKey='',checkModels=[],repairKey='',repairModels=[]){
+export function settingsView(s,models,key,books,checkKey='',checkModels=[],repairKey='',repairModels=[],launchers=''){
  s={...s,modes:{...DEFAULTS.modes,...s.modes},sendFields:{...DEFAULTS.sendFields,...s.sendFields}};
  const variant=s.promptVariant==='extended'?'extended':'original';if(s.promptVariant!=='custom')s={...s,...PROMPT_LIBRARY[variant]};
  const b=(a,t,x='')=>`<button type="button" data-action="${a}" ${x}>${t}</button>`;
@@ -27,7 +27,7 @@ export function settingsView(s,models,key,books,checkKey='',checkModels=[],repai
  const appearance=select('themePreset','内置主题',{tavern:'跟随酒馆（不透明底色）',soft:'柔和蓝灰',paper:'纸张米色',contrast:'高对比'})+select('fontPreset','内置字体',{system:'系统默认',tavern:'跟随酒馆字体',sans:'清晰黑体',serif:'宋体／衬线',kai:'楷体风格',mono:'等宽字体'})+appearanceView(s.appearance)+drawer('自定义 CSS','仅使用插件 smm- 前缀选择器',area('customCss','自定义 CSS'));
  const profile=`<section class="smm-settings-profiles"><h3>设置存档</h3><select id="smm-profiles"><option value="">选择存档</option>${profiles}</select><div class="smm-actions">${b('profile-save','新建存档')}${b('profile-update','更新选中存档')}${b('profile-delete','删除存档')}</div></section>`;
  const backup=`${b('view-backups','查看本机备份')}${b('restore','恢复最近备份')}<div id="smm-backup-list"></div><p>恢复快照不改变酒馆原文隐藏状态。</p>`;
- return `<section class="smm-plugin-control"><h3>插件总开关</h3>${check('pluginEnabled',s.pluginEnabled?'插件已启用':'关闭插件记忆处理')}</section>`+profile+
+ return drawer('插件开关','插件启用、悬浮球与侧边栏',check('pluginEnabled','启用插件')+launchers)+profile+
  drawer('API 与连接','密钥预设、各 API、流式、超时和重试',apiBody)+
  drawer('自动总结与分级','触发起点、自动保存、隐藏及二三次升级',automatic)+
  drawer('长期记忆设置','通过本地关键词规则发送长期记忆',longMemory)+

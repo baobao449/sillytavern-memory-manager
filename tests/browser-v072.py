@@ -107,7 +107,7 @@ with sync_playwright() as p:
   page.get_by_role('button',name='总结',exact=True).click();drawers();page.locator('[data-action=books]').click();page.locator('[data-book="Test Book"]').check()
   page.get_by_role('button',name='设置',exact=True).click();drawers();page.locator('[data-action=settings-save]').click()
   assert page.evaluate('window.SillyTavern.getContext().extensionSettings.st_memory_manager.booksByCharacter["mock.png"]')==['Test Book']
-  assert page.locator('.smm-settings-profiles').evaluate('(e)=>e.previousElementSibling.classList.contains("smm-plugin-control")')
+  assert page.locator('.smm-settings-profiles').evaluate('(e)=>e.previousElementSibling.matches("details") && e.previousElementSibling.querySelector("[data-setting=pluginEnabled]")!==null')
   assert page.locator('.smm-migration-notice').count()==0
   assert page.locator('[data-setting=excludeTags]').input_value()=='think,thinking,details,summary'
   for tag in ['bbi_image','image','###']:assert page.locator('[data-tag-preset=excludeTags][data-tag="'+tag+'"]').count()==1

@@ -249,3 +249,26 @@ html[data-smm-theme=tavern],#smm-panel[data-theme=tavern]{
 
 #smm-panel .smm-current-task{margin-block:8px}
 #smm-panel .smm-current-task [data-action="task-cancel"]{font-size:.85em;padding:2px 6px;margin-inline-start:4px}
+.smm-launcher{position:fixed;z-index:31990;width:0;height:0;font:16px system-ui,sans-serif}
+.smm-launcher[hidden]{display:none!important}
+.smm-launcher button{position:absolute;display:grid;place-items:center;box-sizing:border-box;margin:0;padding:0;min-width:0;min-height:0;border:1px solid #ffffff73;color:#fff;cursor:pointer;line-height:1;box-shadow:0 2px 9px #0006;-webkit-tap-highlight-color:transparent}
+.smm-launcher button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.smm-launcher-open{touch-action:none;user-select:none}
+.smm-launcher-close,#smm-panel [data-action=close]{touch-action:manipulation}
+.smm-launcher img{width:100%;height:100%;object-fit:cover;pointer-events:none}
+.smm-launcher-ball .smm-launcher-open{left:0;top:0;width:52px;height:52px;transform:translate(-50%,-50%);border-radius:50%;overflow:hidden;font-size:15px;font-weight:650}
+.smm-launcher .smm-launcher-close{width:28px;height:28px;border-radius:50%;background:#28323c;font-size:20px}
+.smm-launcher-ball .smm-launcher-close{left:19px;top:-38px}
+.smm-launcher-edge .smm-launcher-open{width:34px;height:56px;top:-28px;background:#26333e;font-size:15px;opacity:.66;transition:opacity .15s ease}
+.smm-launcher-edge:hover .smm-launcher-open,.smm-launcher-edge:focus-within .smm-launcher-open,.smm-launcher-moving .smm-launcher-open{opacity:1}
+.smm-launcher-edge .smm-launcher-close{top:-55px}
+.smm-launcher-edge[data-side=right] .smm-launcher-open{left:-34px;border-radius:8px 0 0 8px}
+.smm-launcher-edge[data-side=right] .smm-launcher-close{left:-32px}
+.smm-launcher-edge[data-side=left] .smm-launcher-open{left:0;border-radius:0 8px 8px 0}
+.smm-launcher-edge[data-side=left] .smm-launcher-close{left:4px}
+.smm-launcher-moving .smm-launcher-open{cursor:grabbing}
+.smm-launcher-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding-top:8px}
+.smm-launcher-controls section{min-width:0;border-top:1px solid var(--smm-line);padding-top:8px}
+.smm-launcher-controls input[type=color]{min-height:36px;padding:3px}
+.smm-launcher-controls output{display:block;overflow-wrap:anywhere}
+@media(max-width:550px){.smm-launcher-controls{grid-template-columns:minmax(0,1fr)}}
