@@ -1,6 +1,6 @@
 # Isolated browser regression: all chat content and network responses below are synthetic fixtures.
 # Run with Python Playwright and Microsoft Edge installed. No real account/API is contacted.
-import json,threading,http.server,functools
+import json,threading,http.server,functools,os
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 root=Path(__file__).resolve().parent.parent
@@ -49,6 +49,13 @@ with sync_playwright() as p:
   page.wait_for_timeout(650)
   if page.locator('[data-choice=later]').count():page.locator('[data-choice=later]').click()
   def drawers():page.evaluate("document.querySelectorAll('#smm-panel details').forEach(d=>d.open=true)")
+  preview=os.getenv('SMM_UI_PREVIEW') and width==390
+  if preview:page.add_style_tag(content='#st_memory_manager-toast{visibility:hidden!important}')
+  def shot(name,focus=None):
+   if not preview:return
+   page.locator('.smm-body').evaluate('(e)=>e.scrollTop=0')
+   if focus:page.locator(focus).first.evaluate("(e)=>e.scrollIntoView({block:'center'})")
+   page.locator('#smm-panel').screenshot(path=str(root/'output'/f'ui-{name}.png'))
   page.get_by_role('button',name='设置',exact=True).click();drawers()
   assert page.locator('[data-action=configuration-clean]').count()==0
   assert page.locator('#smm-entry .fa-layer-group').count()==1
@@ -114,6 +121,47 @@ with sync_playwright() as p:
   page.locator('[data-setting=themePreset]').select_option('paper')
   assert page.locator('[data-action=settings-open]').evaluate('(e)=>getComputedStyle(e).borderTopStyle')=='none'
   assert page.locator('[data-setting=themePreset]').evaluate('(e)=>getComputedStyle(e).color')=='rgb(51, 47, 43)'
+  if preview:
+   page.locator('.smm-body details').evaluate_all('(ds)=>ds.forEach(d=>d.open=false)')
+   page.locator('.smm-body>details').first.locator('summary').first.click()
+   shot('06-settings')
+   for tag, title, anchor in [
+    ('07-api','API 与连接','.smm-connection-presets'),
+    ('08-tags','正文读取与处理','[data-filter-tags]'),
+    ('09-output','总结内容与输出','.smm-field-grid'),
+    ('10-prompts','总结要求与提示词','[data-action=preset-import]'),
+    ('11-appearance','外观与窗口','[data-action=appearance-reset]'),
+    ('12-backup','聊天记忆与备份','[data-action=memory-import]')]:
+    page.locator('.smm-body>details:not(:first-of-type)').evaluate_all('(ds)=>ds.forEach(d=>d.open=false)')
+    parent=page.locator('.smm-body>details').filter(has=page.locator('summary',has_text=title)).first
+    parent.locator('summary').first.click()
+    if tag=='09-output': parent.locator('summary',has_text='总结的信息栏目').click()
+    if tag=='11-appearance': parent.locator('summary',has_text='自定义 CSS').click()
+    if tag=='12-backup': page.locator('.smm-body>details').last.locator('summary').click()
+    shot(tag,anchor)
+  page.locator('[data-tab=summary]').click()
+  def check_count_help():
+   hint=page.locator('.smm-count-controls .smm-help')
+   assert hint.evaluate('(e)=>e.open')
+   before=hint.evaluate('(e)=>e.parentElement.offsetHeight')
+   hint.locator('summary').click()
+   assert hint.evaluate('(e)=>!e.open')
+   assert hint.evaluate('(e)=>e.parentElement.offsetHeight')<before
+   hint.locator('summary').click()
+  check_count_help()
+  shot('02b-summary-help',' .smm-count-controls')
+  progress=page.locator('.smm-chat-progress')
+  progress.locator('summary').click();assert not progress.evaluate('(e)=>e.open')
+  page.locator('[data-action=summary-refresh]').click();assert not progress.evaluate('(e)=>e.open')
+  progress.locator('summary').click()
+  shot('02a-progress')
+  shot('02-summary','[data-action=source]')
+  page.locator('#smm-auto-status').locator('xpath=..').locator('summary').click()
+  shot('03-auto','[data-action=auto-toggle]')
+  page.locator('[data-action=settings-shortcut]').click()
+  assert page.locator('#smm-automatic-settings').evaluate('(e)=>e.open&&document.activeElement===e.firstElementChild')
+  page.locator('[data-tab=summary]').click();drawers()
+  shot('04-batch','[data-action=batch-all]')
   page.get_by_role('button',name='总结',exact=True).click();drawers();page.locator('[data-action=usage-preview]').click()
   page.wait_for_function('document.querySelector("#smm-request-usage").innerText.includes("合计")')
   page.locator('#smm-prompt-preview details').evaluate_all('(ds)=>ds.forEach(d=>d.open=true)');page.wait_for_function('document.querySelector("#smm-prompt-preview").textContent.includes("WORLD_EVIDENCE")')
@@ -127,9 +175,21 @@ with sync_playwright() as p:
   assert page.evaluate('window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories.length')==0
   assert page.locator('.smm-batch-report').count()==0
   assert '2份' in page.locator('#smm-panel .smm-body').inner_text()
+  assert page.locator('.smm-source-sort-compact').is_visible()
+  assert page.locator('.smm-body > p').filter(has_text='选择范围').count()==0
+  rows=page.locator('.smm-draft-footer .smm-text-row')
+  assert rows.nth(0).locator('button').evaluate_all("(es)=>es.map(e=>e.dataset.action)")==['approve','approve-all','check']
+  assert rows.nth(1).locator('button').evaluate_all("(es)=>es.map(e=>e.dataset.action)")==['regenerate','discard']
+  assert rows.locator('button').evaluate_all("(es)=>es.every(e=>getComputedStyle(e).borderTopStyle==='none')")
+  shot('05-draft')
+  page.locator('[data-action=draft-add]').click()
+  assert page.locator('.smm-destination input[type=radio]').count()==3
+  if preview:page.screenshot(path=str(root/'output'/'ui-05b-destination.png'))
+  page.locator('.smm-destination [data-cancel]').click()
   captured=page.evaluate('({metadata:window.SillyTavern.getContext().chatMetadata,settings:window.SillyTavern.getContext().extensionSettings})');page.reload()
   page.evaluate("""()=>{document.body.innerHTML='<div id="extensionsMenu"></div>';const l=document.createElement('link');l.rel='stylesheet';l.href='/style.css';document.head.append(l);const ns='st_memory_manager';const c={chat:Array.from({length:30},(_,i)=>({name:i%2?'Role':'User',is_user:i%2===0,mes:i%2?'<CONTENT>真实原话。阿宁持有铜印。':'你好'})),chatId:'flow-test',characterId:0,characters:[{name:'Mock',avatar:'mock.png',data:{extensions:{world:'Test Book'}}}],name2:'Mock',chatMetadata:{[ns]:{schema:1,memories:[],batches:[],hidden:[],recall:{},revision:0,options:{baseUrl:'bad-old',filterVersion:1,batchSize:0}}},extensionSettings:{[ns]:{baseUrl:'https://old.invalid',customCss:'bad-old-css',attics:{'mock.png':{memories:[]}}}},eventTypes:{CHAT_CHANGED:'CHAT_CHANGED',MESSAGE_RECEIVED:'received',GENERATION_AFTER_COMMANDS:'inject',CHAT_COMPLETION_PROMPT_READY:'ready'},eventSource:{on:(name,fn)=>{window.handlers[name]=fn}},getRequestHeaders:()=>({'Content-Type':'application/json'}),saveMetadata:async()=>{window.savedStore=structuredClone(c.chatMetadata)},saveSettingsDebounced:()=>{},setExtensionPrompt:(_id,text)=>window.injected=text};window.handlers={};window.SillyTavern={getContext:()=>c};}""")
   page.evaluate('(saved)=>{const c=window.SillyTavern.getContext();c.chatMetadata=saved.metadata;c.extensionSettings=saved.settings}',captured)
+  if preview:page.add_style_tag(content='#st_memory_manager-toast{visibility:hidden!important}')
   page.evaluate("import('/index.js')");page.locator('#smm-entry').click();page.get_by_role('button',name='待确认',exact=True).click();page.locator('[data-action=approve-all]').wait_for()
   # Confirm stays pinned while the memory body scrolls.
   for pos in [0,99999]:
@@ -140,6 +200,7 @@ with sync_playwright() as p:
   page.wait_for_function('!document.querySelector("[data-action=approve-all]")')
   assert page.evaluate('window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories.every(m=>m.details.characters==="阿宁：本次持有铜印的人。")')
   page.get_by_role('button',name='记忆',exact=True).click();drawers()
+  shot('13-memory')
   assert page.locator('.smm-card').first.locator('h4').filter(has_text='人物').count()==1
   assert '阿宁：本次持有铜印的人。' in page.locator('.smm-card').first.inner_text()
 
@@ -150,7 +211,7 @@ with sync_playwright() as p:
   page.get_by_role('button',name='总结',exact=True).click();assert '第10-' in page.locator('#smm-auto-status').text_content()
   page.locator('[data-action=ignore-floors]').click();assert page.locator('dialog textarea').input_value()=='0,5';page.locator('dialog').get_by_role('button',name='确定',exact=True).click();page.locator('[data-action=ignore-reset]').wait_for()
   assert page.evaluate('JSON.stringify(window.SillyTavern.getContext().chatMetadata.st_memory_manager.ignoredFloors)')=='[0,5]'
-  assert '已保存总结：第0-9楼' in page.locator('.smm-progress-board').first.inner_text()
+  assert '已保存总结：第0-9楼' in page.locator('.smm-chat-progress').inner_text()
   assert page.evaluate('window.SillyTavern.getContext().chat.filter(m=>m.is_system).length')==0
   page.locator('[data-action=ignore-reset]').click();page.wait_for_function('!document.querySelector("[data-action=ignore-reset]")')
   page.locator('[data-count-mode]').select_option('time');assert page.locator('[data-count-mode]').input_value()=='time'
@@ -329,7 +390,7 @@ with sync_playwright() as p:
    assert page.locator('#smm-start').input_value()=='20',variant
    assert page.locator('#smm-batch-start').input_value()=='20',variant
    assert '第20-' in page.locator('#smm-auto-status').text_content(),variant
-   assert '尚未总结：第20-29楼' in page.locator('.smm-progress-board').first.inner_text(),variant
+   assert '尚未总结：第20-29楼' in page.locator('.smm-chat-progress').inner_text(),variant
    assert page.evaluate('window.SillyTavern.getContext().chat.filter(m=>m.is_system).length')==6
    assert page.evaluate('JSON.stringify(window.SillyTavern.getContext().chatMetadata.st_memory_manager.hidden)')=='[20,21,22,23,24,25]'
    page.evaluate('window.handlers.CHAT_CHANGED()');page.locator('[data-tab=summary]').click()
@@ -486,6 +547,13 @@ with sync_playwright() as p:
   for theme in ['soft','paper','contrast','tavern']:
    page.locator('[data-action=settings-open]').click();drawers()
    page.locator('[data-setting=themePreset]').select_option(theme)
+   checkboxes=page.locator('[data-setting=pluginEnabled],[data-launcher=ballOn],[data-launcher=edgeOn]')
+   colors=checkboxes.evaluate_all('(es)=>es.map(e=>getComputedStyle(e).accentColor)')
+   assert len(colors)==3 and len(set(colors))==1 and colors[0]!='auto',(theme,colors)
+   assert page.locator('.smm-launcher-controls summary').evaluate_all("(es)=>es.every(e=>getComputedStyle(e).listStyleType==='none')")
+   if preview:
+    page.locator('.smm-body details').evaluate_all("(es)=>es.forEach((e,i)=>e.open=i===0)")
+    shot(f'06-theme-{theme}')
    page.locator('[data-tab=memories]').click()
    page.evaluate("document.querySelectorAll('#smm-panel details.smm-group').forEach(d=>d.open=false);document.getElementById('st_memory_manager-toast')?.remove()")
    style=page.locator('#smm-panel').evaluate("""e=>{const search=e.querySelector('#smm-search'),workspace=e.querySelector('.smm-memory-workspace'),range=e.querySelector('[data-memory-scope]');return {theme:e.dataset.theme,searchWidth:search.getBoundingClientRect().width,searchHeight:search.getBoundingClientRect().height,rangeBg:getComputedStyle(range).backgroundColor,rangeInk:getComputedStyle(range).color,searchBg:getComputedStyle(search).backgroundColor,workspaceBg:getComputedStyle(workspace).backgroundColor,panelBg:getComputedStyle(e).getPropertyValue('--smm-bg'),horizontalOverflow:e.scrollWidth>e.clientWidth}}""")
@@ -538,12 +606,12 @@ with sync_playwright() as p:
   if new.count():new.click()
   wait_held(1)
   submit_summary(12,13);wait_held(2)
-  statuses=page.locator('.smm-progress-board [data-smm-task-status]').first
+  statuses=page.locator('.smm-chat-progress [data-smm-task-status]')
   assert statuses.get_by_role('button',name='取消',exact=True).count()==2
   assert '第10-11楼' in statuses.inner_text() and '第12-13楼' in statuses.inner_text()
   page.locator('#smm-floating-progress [data-close]').click()
   failed,_=held.pop(0);failed.fulfill(json={'error':{'message':'模拟并发失败','code':'test_failure'}})
-  page.wait_for_function("document.querySelectorAll('.smm-progress-board [data-task]').length===1")
+  page.wait_for_function("document.querySelectorAll('.smm-chat-progress [data-task]').length===1")
   assert '第12-13楼' in statuses.inner_text()
   # A third request can start as soon as the failure releases one slot.
   submit_summary(14,15);wait_held(2)
@@ -551,7 +619,7 @@ with sync_playwright() as p:
   statuses.scroll_into_view_if_needed()
   page.screenshot(path=str(root/'output'/f'v075-concurrent-{width}.png'))
   statuses.get_by_text('第14-15楼',exact=False).get_by_role('button',name='取消',exact=True).click()
-  page.wait_for_function("document.querySelectorAll('.smm-progress-board [data-task]').length===1")
+  page.wait_for_function("document.querySelectorAll('.smm-chat-progress [data-task]').length===1")
   survivor,response=held.pop(0);survivor.fulfill(json=response)
   cancelled,response=held.pop(0)
   try:cancelled.fulfill(json=response)
@@ -590,6 +658,26 @@ with sync_playwright() as p:
   page.locator('[data-tab=summary]').click()
   assert page.locator('#smm-start').input_value()=='0'
   assert '开始自动总结' in page.locator('#smm-auto-status').text_content()
+  await_fixture="""async()=>{const db=await import('/runtime.js');for(let i=0;i<101;i++)await db.record('logs',{id:'delete-fixture-'+i,chat:db.chatKey(),task:'fixture',channel:'task',stage:i===100?'草稿展示就绪':'总结输入',created:i+100,sequence:i,data:{level:1}});}"""
+  page.evaluate(await_fixture)
+  page.locator('[data-tab=logs]').click()
+  delete=page.locator('.smm-log-delete')
+  collapsed_height=page.locator('.smm-log-tools').evaluate('(e)=>e.offsetHeight')
+  shot('14b-logs-closed')
+  delete.locator('summary').click()
+  assert page.locator('.smm-log-tools').evaluate('(e)=>e.offsetHeight')>collapsed_height
+  assert delete.locator('div').evaluate('(e)=>Math.abs(e.getBoundingClientRect().width-e.closest(".smm-log-tools").getBoundingClientRect().width)<2')
+  page.locator('#smm-log-list details>summary').first.click()
+  shot('14-logs')
+  page.locator('[data-action=logs-delete-old]').click()
+  page.wait_for_function('document.querySelector(".smm-log-count")?.textContent.startsWith("1 个")')
+  assert delete.evaluate('(e)=>e.open')
+  page.locator('[data-tab=summary]').click();page.locator('[data-tab=logs]').click()
+  assert not delete.evaluate('(e)=>e.open')
+  assert page.locator('.smm-log-tools').evaluate('(e)=>e.offsetHeight')==collapsed_height
+  page.locator('[data-tab=organize]').click()
+  check_count_help()
+  shot('15-organize')
   assert errors==[],errors
   results.append({'width':width,'calls':calls,'defaults':True,'continuousBatches':True,'saveAll':True,'ignoreGaps':True,'autoCursor':True,'tourCenteredSettingsFirst':True,'fixedFooter':True,'legacyDeleteHiddenUntouched':True,'statusUpdateRollbackAndNotice':True,'clearSelection':True,'aiAndMixedClassification':True,'resizableCancellableProgress':True,'themeChecks':theme_checks})
   page.close()

@@ -1,7 +1,7 @@
-import {escapeHtml as h} from './core.js?v=0.7.6';
+import {escapeHtml as h} from './core.js?v=0.7.7';
 
 const KEY='st_memory_manager:launchers';
-const DEFAULT_COLOR='#365b7c';
+const DEFAULT_COLOR='#000000';
 const WEBP_DATA_RE=/^data:image\/webp;base64,[a-z0-9+/=]+$/i;
 const clamp=(n,min,max)=>Math.min(Math.max(n,min),max);
 const unit=(n)=>Number.isFinite(n)?clamp(n,0,1):.5;
@@ -14,21 +14,22 @@ function read(version){
  const upgraded=saved.version!==version;
  return {version,ballOn:upgraded||saved.ballOn!==false,edgeOn:saved.edgeOn===true,
   x:upgraded ? .5 : unit(saved.x),y:upgraded ? .5 : unit(saved.y),edgeY:unit(saved.edgeY),side:saved.side==='left'?'left':'right',
-  text:symbol(saved.text),color:color(saved.color),image:typeof saved.image==='string'&&saved.image.length<100000&&WEBP_DATA_RE.test(saved.image)?saved.image:''};
+  text:symbol(saved.text),color:color(saved.color==='#365b7c'&&!saved.colorCustomized?'':saved.color),colorCustomized:saved.colorCustomized===true,image:typeof saved.image==='string'&&saved.image.length<100000&&WEBP_DATA_RE.test(saved.image)?saved.image:''};
 }
 
 export function launcherControls(s){
  return `<div class="smm-launcher-controls"><section>
- <label class="smm-check"><input type="checkbox" data-launcher="ballOn" ${s.ballOn?'checked':''}>悬浮球</label>
- <div class="smm-actions"><button type="button" data-launcher="ballReset">重置悬浮球位置</button></div>
+ <input type="checkbox" data-launcher="ballOn" aria-label="启用悬浮球" ${s.ballOn?'checked':''}>
+ <details><summary>悬浮球</summary><div class="smm-launcher-options">
+ <button type="button" class="smm-text-button" data-launcher="ballReset">重置</button>
  <label>自定义符号或文字<input type="text" data-launcher="text" maxlength="8" value="${h(s.text)}" placeholder="留空使用默认图标"></label>
  <label>悬浮球颜色<input type="color" data-launcher="color" value="${s.color}"></label>
  <label>悬浮球图片<input type="file" data-launcher="image" accept="image/png,image/jpeg,image/webp"></label>
  <button type="button" data-launcher="imageClear" ${s.image?'':'hidden'}>移除图片</button>
  <output data-launcher-status role="status"></output>
- </section><section>
- <label class="smm-check"><input type="checkbox" data-launcher="edgeOn" ${s.edgeOn?'checked':''}>吸附侧边栏</label>
- <button type="button" data-launcher="edgeReset">重置侧边栏位置</button>
+ </div></details></section><section>
+ <input type="checkbox" data-launcher="edgeOn" aria-label="启用吸附侧边栏" ${s.edgeOn?'checked':''}>
+ <details><summary>吸附侧边栏</summary><div class="smm-launcher-options"><button type="button" class="smm-text-button" data-launcher="edgeReset">重置</button></div></details>
  </section></div>`;
 }
 
@@ -49,9 +50,9 @@ export function installLaunchers(version,open){
  const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(state));return true;}catch{return false;}};
  function mount(kind,label){
   const el=document.createElement('div');el.className=`smm-launcher smm-launcher-${kind}`;
-  el.innerHTML=`<button type="button" class="smm-launcher-open" aria-label="${label}打开记忆管理器" title="打开记忆管理器"></button><button type="button" class="smm-launcher-close" aria-label="关闭${label}" title="关闭${label}">×</button>`;
+  el.innerHTML=`<button type="button" class="smm-launcher-open" aria-label="${label}打开记忆管理器" title="打开记忆管理器"></button>`;
   document.body.append(el);
-  return {el,button:el.firstElementChild,close:el.lastElementChild};
+  return {el,button:el.firstElementChild};
  }
  const ball=mount('ball','悬浮球'),edge=mount('edge','侧边栏');
  function setIcon(target,icon){const i=document.createElement('i');i.className=`fa-solid ${icon}`;i.setAttribute('aria-hidden','true');target.replaceChildren(i);}
@@ -65,16 +66,14 @@ export function installLaunchers(version,open){
  }
  const extent=()=>({w:document.documentElement.clientWidth||innerWidth,h:innerHeight});
  const bounds=(value,size,margin)=>clamp(value,Math.min(margin,size/2),Math.max(size-margin,size/2));
- function placeBall(x,y){const {w,h}=extent();ball.el.style.left=`${bounds(x,w,55)}px`;ball.el.style.top=`${bounds(y,h,54)}px`;}
- function placeEdge(x,y,side){const {h}=extent();edge.el.dataset.side=side;edge.el.style.left=`${x}px`;edge.el.style.top=`${bounds(y,h,57)}px`;}
+ function placeBall(x,y){const {w,h}=extent();ball.el.style.left=`${bounds(x,w,27)}px`;ball.el.style.top=`${bounds(y,h,27)}px`;}
+ function placeEdge(x,y,side){const {h}=extent();edge.el.dataset.side=side;edge.el.style.left=`${x}px`;edge.el.style.top=`${bounds(y,h,43)}px`;}
  function layout(){const {w,h}=extent();placeBall(state.x*w,state.y*h);placeEdge(state.side==='left'?0:w,state.edgeY*h,state.side);}
  function visible(){
   ball.el.hidden=!state.ballOn;edge.el.hidden=!state.edgeOn;
   for(const key of ['ballOn','edgeOn']){const input=document.querySelector(`#smm-panel [data-launcher=${key}]`);if(input)input.checked=state[key];}
  }
  function toggle(key,value){state[key]=value;visible();persist();}
- ball.close.onclick=()=>toggle('ballOn',false);
- edge.close.onclick=()=>toggle('edgeOn',false);
  // An inward swipe can suppress Chromium's next synthesized click. Handle a deliberate tap on the panel close button directly.
  let closeTap;
  document.addEventListener('touchstart',e=>{
@@ -142,7 +141,7 @@ export function installLaunchers(version,open){
   const input=e.target,key=input.closest('#smm-panel')&&input.dataset.launcher;
   if(key==='ballOn'||key==='edgeOn'){toggle(key,input.checked);return;}
   if(key==='text'||key==='color'){
-   state[key]=key==='text'?symbol(input.value):color(input.value);input.value=state[key];appearance();persist();
+   state[key]=key==='text'?symbol(input.value):color(input.value);if(key==='color')state.colorCustomized=true;input.value=state[key];appearance();persist();
   }else if(key==='image'&&input.files[0]){
    const request=++imageRequest,file=input.files[0];input.value='';
    try{const data=await thumbnail(file);if(request===imageRequest){updateImage(data);status('图片已保存');}}

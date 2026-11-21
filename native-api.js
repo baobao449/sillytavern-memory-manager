@@ -1,5 +1,5 @@
-import {bodyReader} from './stream-reader.js?v=0.7.6';
-import {apiFailure} from './api-errors.js?v=0.7.6';
+import {bodyReader} from './stream-reader.js?v=0.7.7';
+import {apiFailure} from './api-errors.js?v=0.7.7';
 const strip=s=>String(s).replace(/\/+$/,'');
 export function nativeRequest(s,key,kind,messages,stream){
  const protocol=s.protocol||'tavern',base=strip(s.baseUrl),headers={'Content-Type':'application/json'};let url,body;
