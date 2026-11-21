@@ -1,4 +1,4 @@
-import {escapeHtml as h} from './core.js?v=0.7.8';
+import {escapeHtml as h} from './core.js?v=0.7.9';
 
 export function manualMemoryDialog(onSave){
  return new Promise(resolve=>{

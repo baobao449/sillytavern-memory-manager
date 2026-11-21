@@ -1,14 +1,14 @@
-import {coveredFloors} from './session-state.js?v=0.7.8';
-import {STRONG_PROMPTS} from './strong-prompts.js?v=0.7.8';
-import {JSON_RULES,DEDUP_RULES} from './output-contract.js?v=0.7.8';
-import {summaryLengthRule,summaryLevelLabel} from './summary-rules.js?v=0.7.8';
-import {STAGE_RULES} from './stage-rules.js?v=0.7.8';
-import {quoteChecks,floorLabel} from './memory-tools.js?v=0.7.8';
-import {EXPANSIONS} from './prompt-library.js?v=0.7.8';
-import {formatExample,formatInstruction,parseAlternative} from './formats.js?v=0.7.8';
-import {parseResponse,responseProblem,JSON_RECOVERED} from './response.js?v=0.7.8';
+import {coveredFloors} from './session-state.js?v=0.7.9';
+import {STRONG_PROMPTS} from './strong-prompts.js?v=0.7.9';
+import {JSON_RULES,DEDUP_RULES} from './output-contract.js?v=0.7.9';
+import {summaryLengthRule,summaryLevelLabel} from './summary-rules.js?v=0.7.9';
+import {STAGE_RULES} from './stage-rules.js?v=0.7.9';
+import {quoteChecks,floorLabel} from './memory-tools.js?v=0.7.9';
+import {EXPANSIONS} from './prompt-library.js?v=0.7.9';
+import {formatExample,formatInstruction,parseAlternative} from './formats.js?v=0.7.9';
+import {parseResponse,responseProblem,JSON_RECOVERED} from './response.js?v=0.7.9';
 export const NS = 'st_memory_manager';
-export const VERSION = '0.7.8';
+export const VERSION = '0.7.9';
 let fallbackIdSequence=0;
 export function newId(){
  const crypto=globalThis.crypto;
