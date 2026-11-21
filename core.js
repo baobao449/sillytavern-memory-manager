@@ -9,10 +9,17 @@ import {formatExample,formatInstruction,parseAlternative} from './formats.js?v=0
 import {parseResponse,responseProblem,JSON_RECOVERED} from './response.js?v=0.7.8';
 export const NS = 'st_memory_manager';
 export const VERSION = '0.7.8';
+let fallbackIdSequence=0;
 export function newId(){
- if(typeof globalThis.crypto?.randomUUID==='function')return globalThis.crypto.randomUUID();
- // randomUUID requires a secure context; getRandomValues remains available on ordinary HTTP.
- const bytes=globalThis.crypto.getRandomValues(new Uint8Array(16));
+ const crypto=globalThis.crypto;
+ if(typeof crypto?.randomUUID==='function')return crypto.randomUUID();
+ const bytes=new Uint8Array(16);
+ if(typeof crypto?.getRandomValues==='function')crypto.getRandomValues(bytes);
+ else{
+  // Some older HTTP WebViews expose no Web Crypto object at all. IDs are uniqueness tokens, not secrets.
+  let seed=(Date.now()^Math.floor((globalThis.performance?.now?.()||0)*1000)^++fallbackIdSequence)>>>0;
+  for(let i=0;i<bytes.length;i++){seed=(Math.imul(seed^(seed>>>16),0x45d9f3b)+i+fallbackIdSequence)>>>0;bytes[i]=(seed^(seed>>>16)^Math.floor(Math.random()*256))&255;}
+ }
  bytes[6]=(bytes[6]&0x0f)|0x40;
  bytes[8]=(bytes[8]&0x3f)|0x80;
  const hex=Array.from(bytes,n=>n.toString(16).padStart(2,'0')).join('');

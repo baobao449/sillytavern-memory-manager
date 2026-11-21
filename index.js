@@ -606,4 +606,12 @@ const launcherSettings=installLaunchers(VERSION,open);
 const entry=document.createElement('div');entry.id='smm-entry';entry.className='list-group-item flex-container flexGap5 interactable';entry.tabIndex=0;entry.innerHTML='<i class="fa-solid fa-layer-group" aria-hidden="true"></i><span>酒馆记忆管理器</span>';entry.onclick=open;entry.onkeydown=e=>{if(e.key==='Enter')open();};host.append(entry);bind();setTimeout(()=>historyReminder().catch(report),500);window.addEventListener('pagehide',()=>{persistSession();job?.controller.abort();client.cancel();checkClient.cancel();repairClient.cancel();api.prompt.clear();},{once:true});
 
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>initializeMemoryManager().catch(e=>console.error('[记忆管理器]',e)),{once:true});else initializeMemoryManager().catch(e=>console.error('[记忆管理器]',e));
+function showStartupFailure(error){
+ console.error('[记忆管理器]',error);
+ const host=document.querySelector('#extensionsMenu')||document.querySelector('#extensions_settings');
+ if(!host)return;
+ let entry=document.getElementById('smm-entry-error');
+ if(!entry){entry=document.createElement('div');entry.id='smm-entry-error';entry.className='list-group-item flex-container flexGap5 interactable';entry.tabIndex=0;entry.innerHTML='<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><span>酒馆记忆管理器启动失败</span>';host.append(entry);}
+ const details=String(error?.stack||error?.message||error||'未知错误');entry.title=details.slice(0,1000);entry.onclick=()=>alert('酒馆记忆管理器启动失败：\n'+details);entry.onkeydown=e=>{if(e.key==='Enter')entry.click();};
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>initializeMemoryManager().catch(showStartupFailure),{once:true});else initializeMemoryManager().catch(showStartupFailure);
