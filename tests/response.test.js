@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {DEFAULTS as USER_DEFAULTS,filterText,parseJson,validateDraft} from '../core.js';
+import {DEFAULTS as USER_DEFAULTS,filterText,parseJson,sourceSnapshot,validateDraft} from '../core.js';
 import {formatExample,repairMessages} from '../formats.js';
 import {requestBreakdown} from '../request-view.js';
 // These provenance scenarios explicitly enable quote extraction.
@@ -37,4 +37,15 @@ test('blacklist and whitelist combine and users retain their own full input',()=
  assert.equal(filterText('<content>正<thinking>隐</thinking>文</content>',s).text,'正文');
  assert.equal(filterText('用户全文',s,true).text,'用户全文');
  assert.equal(filterText('无标签',s).missing,true);
+});
+test('floor zero bypasses whitelist but still applies blacklist',()=>{
+ const s={...DEFAULTS,filterMode:'combined',filterVersion:3,sourceTag:'content',excludeTags:'think,thinking'};
+ const rows=sourceSnapshot([
+  {is_user:false,mes:'<think>隐藏</think>无标签开场白'},
+  {is_user:false,mes:'无标签正文'},
+ ],0,1,s);
+ assert.deepEqual(rows.map(({text,missing})=>({text,missing})),[
+  {text:'无标签开场白',missing:false},
+  {text:'',missing:true},
+ ]);
 });

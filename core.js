@@ -1,14 +1,14 @@
-import {coveredFloors} from './session-state.js?v=0.7.7';
-import {STRONG_PROMPTS} from './strong-prompts.js?v=0.7.7';
-import {JSON_RULES,DEDUP_RULES} from './output-contract.js?v=0.7.7';
-import {summaryLengthRule,summaryLevelLabel} from './summary-rules.js?v=0.7.7';
-import {STAGE_RULES} from './stage-rules.js?v=0.7.7';
-import {quoteChecks,floorLabel} from './memory-tools.js?v=0.7.7';
-import {EXPANSIONS} from './prompt-library.js?v=0.7.7';
-import {formatExample,formatInstruction,parseAlternative} from './formats.js?v=0.7.7';
-import {parseResponse,responseProblem,JSON_RECOVERED} from './response.js?v=0.7.7';
+import {coveredFloors} from './session-state.js?v=0.7.8';
+import {STRONG_PROMPTS} from './strong-prompts.js?v=0.7.8';
+import {JSON_RULES,DEDUP_RULES} from './output-contract.js?v=0.7.8';
+import {summaryLengthRule,summaryLevelLabel} from './summary-rules.js?v=0.7.8';
+import {STAGE_RULES} from './stage-rules.js?v=0.7.8';
+import {quoteChecks,floorLabel} from './memory-tools.js?v=0.7.8';
+import {EXPANSIONS} from './prompt-library.js?v=0.7.8';
+import {formatExample,formatInstruction,parseAlternative} from './formats.js?v=0.7.8';
+import {parseResponse,responseProblem,JSON_RECOVERED} from './response.js?v=0.7.8';
 export const NS = 'st_memory_manager';
-export const VERSION = '0.7.7';
+export const VERSION = '0.7.8';
 export function newId(){
  if(typeof globalThis.crypto?.randomUUID==='function')return globalThis.crypto.randomUUID();
  // randomUUID requires a secure context; getRandomValues remains available on ordinary HTTP.
@@ -28,8 +28,19 @@ export function newStore(){return {schema:1,memories:[],batches:[],hidden:[],rec
 export function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function validTag(t){if(t&&!/^[a-zA-Z][\w:-]*$/.test(t))throw Error('标签请只填标签名，例如content');return t;}
 export function extractText(text,tag='',exclude=''){let value=String(text??'');validTag(tag);const names='content|context|think|thinking|details|summary|bbi_image|image';if(tag){const r=new RegExp('<'+tag+'(?:\\s[^>]*)?>([\\s\\S]*?)(?:<\/'+tag+'\\s*>|(?=<\\/?(?:'+names+')\\b)|$)','gi');const matches=[...value.matchAll(r)];if(!matches.length)return {text:'',missing:true};value=matches.map(m=>m[1]).join('\n');}for(const t of exclude.split(/[,，\s]+/).filter(Boolean)){if(t==='###'){value=value.replaceAll('###','');continue;}validTag(t);value=value.replace(new RegExp('<'+t+'(?:\\s[^>]*)?>[\\s\\S]*?(?:<\/'+t+'\\s*>|(?=<\\/?(?:'+names+')\\b)|$)','gi'),'');}return {text:value.trim(),missing:false,...(tag&&!new RegExp('<\\/'+tag+'\\s*>','i').test(String(text))?{partialTag:true}:{})};}
-export function filterText(text,s,user=false){if(user||s.filterMode==='off')return {text:String(text??'').trim(),missing:false};if(s.filterVersion!==3){const mode=s.filterMode??'include',tags=String(s.filterTags??s.sourceTag??'').split(/[,，\s]+/).filter(Boolean);if(mode==='exclude')return extractText(text,'',tags.join(','));const parts=tags.map(t=>extractText(text,t,'')).filter(x=>!x.missing);return {text:parts.map(x=>x.text).join('\n'),missing:!parts.length,...(parts.some(p=>p.partialTag)?{partialTag:true}:{})};}const clean=extractText(text,'',s.excludeTags||'').text,tags=String(s.sourceTag||'').split(/[,，\s]+/).filter(Boolean);if(!tags.length)return {text:clean,missing:false};const parts=tags.map(t=>extractText(clean,t,'')).filter(x=>!x.missing);return {text:parts.map(x=>x.text).join('\n'),missing:!parts.length,...(parts.some(p=>p.partialTag)?{partialTag:true}:{})};}
-export function sourceSnapshot(chat,start,end,s){return chat.slice(start,end+1).map((m,i)=>({floor:start+i,name:String(m.name||''),role:m.is_user?'user':'assistant',swipe:m.swipe_id??null,raw:String(m.mes||''),...filterText(m.mes,s,!!m.is_user)}));}
+export function filterText(text,s,user=false,skipWhitelist=false){
+ if(s.filterMode==='off')return {text:String(text??'').trim(),missing:false};
+ if(skipWhitelist){
+  const mode=s.filterMode??'include',exclude=s.filterVersion===3?s.excludeTags||'':mode==='exclude'?s.filterTags??s.excludeTags??'':'',clean=extractText(text,'',exclude).text;
+  const tags=String(s.filterVersion===3?s.sourceTag||'':mode==='include'?s.filterTags??s.sourceTag??'':'').split(/[,，\s]+/).filter(Boolean);
+  const parts=tags.map(t=>extractText(clean,t,'')).filter(x=>!x.missing);
+  return {text:parts.length?parts.map(x=>x.text).join('\n'):clean,missing:false,...(parts.some(p=>p.partialTag)?{partialTag:true}:{})};
+ }
+ if(user)return {text:String(text??'').trim(),missing:false};
+ if(s.filterVersion!==3){const mode=s.filterMode??'include',tags=String(s.filterTags??s.sourceTag??'').split(/[,，\s]+/).filter(Boolean);if(mode==='exclude')return extractText(text,'',tags.join(','));const parts=tags.map(t=>extractText(text,t,'')).filter(x=>!x.missing);return {text:parts.map(x=>x.text).join('\n'),missing:!parts.length,...(parts.some(p=>p.partialTag)?{partialTag:true}:{})};}
+ const clean=extractText(text,'',s.excludeTags||'').text,tags=String(s.sourceTag||'').split(/[,，\s]+/).filter(Boolean);if(!tags.length)return {text:clean,missing:false};const parts=tags.map(t=>extractText(clean,t,'')).filter(x=>!x.missing);return {text:parts.map(x=>x.text).join('\n'),missing:!parts.length,...(parts.some(p=>p.partialTag)?{partialTag:true}:{})};
+}
+export function sourceSnapshot(chat,start,end,s){return chat.slice(start,end+1).map((m,i)=>{const floor=start+i;return {floor,name:String(m.name||''),role:m.is_user?'user':'assistant',swipe:m.swipe_id??null,raw:String(m.mes||''),...filterText(m.mes,s,!!m.is_user,floor===0)};});}
 // Yield between complete floors; no material is cropped or replaced.
 export async function sourceSnapshotAsync(chat,start,end,s,signal){
  const rows=[];let last=performance.now();for(let i=start;i<=end&&i<chat.length;i++){
