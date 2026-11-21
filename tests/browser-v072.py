@@ -2,6 +2,7 @@
 # Run with Python Playwright and Microsoft Edge installed. No real account/API is contacted.
 import json,threading,http.server,functools,os
 from pathlib import Path
+from urllib.parse import urlsplit
 from playwright.sync_api import sync_playwright
 root=Path(__file__).resolve().parent.parent
 (root/'output').mkdir(exist_ok=True)
@@ -9,13 +10,24 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
  def log_message(self,*args):pass
 server=http.server.ThreadingHTTPServer(('127.0.0.1',0),functools.partial(Quiet,directory=str(root)))
 threading.Thread(target=server.serve_forever,daemon=True).start()
-url='http://127.0.0.1:'+str(server.server_port)
+local_url='http://127.0.0.1:'+str(server.server_port)
+scheme=os.getenv('SMM_TEST_SCHEME')
+url=f'{scheme}://smm-compat.test' if scheme else local_url
 with sync_playwright() as p:
  browser=p.chromium.launch(executable_path='C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless=True)
  results=[]
  for width in [390,1280]:
   page=browser.new_page(viewport={'width':width,'height':900});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+  if scheme:
+   def local_fixture(route):
+    file=root/urlsplit(route.request.url).path.rsplit('/',1)[-1]
+    types={'.js':'text/javascript','.css':'text/css','.json':'application/json'}
+    if file.suffix not in types or not file.is_file(): return route.fulfill(status=404)
+    route.fulfill(body=file.read_bytes(),content_type=types[file.suffix])
+   page.route(url+'/**',local_fixture)
   page.on('dialog',lambda d:d.accept());page.goto(url+'/package.json')
+  assert page.evaluate('window.isSecureContext')==(scheme!='http')
+  assert page.evaluate('typeof globalThis.crypto.randomUUID')==('undefined' if scheme=='http' else 'function')
   page.evaluate("""()=>{document.body.innerHTML='<div id="extensionsMenu"></div>';const l=document.createElement('link');l.rel='stylesheet';l.href='/style.css';document.head.append(l);const ns='st_memory_manager';const c={chat:Array.from({length:30},(_,i)=>({name:i%2?'Role':'User',is_user:i%2===0,mes:i%2?'<CONTENT>真实原话。阿宁持有铜印。':'你好'})),chatId:'flow-test',characterId:0,characters:[{name:'Mock',avatar:'mock.png',data:{extensions:{world:'Test Book'}}}],name2:'Mock',chatMetadata:{[ns]:{schema:1,memories:[],batches:[],hidden:[],recall:{},revision:0,options:{baseUrl:'bad-old',filterVersion:1,batchSize:0}}},extensionSettings:{[ns]:{baseUrl:'https://old.invalid',customCss:'bad-old-css',attics:{'mock.png':{memories:[]}}}},eventTypes:{CHAT_CHANGED:'CHAT_CHANGED',MESSAGE_RECEIVED:'received',GENERATION_AFTER_COMMANDS:'inject',CHAT_COMPLETION_PROMPT_READY:'ready'},eventSource:{on:(name,fn)=>{window.handlers[name]=fn}},getRequestHeaders:()=>({'Content-Type':'application/json'}),saveMetadata:async()=>{window.savedStore=structuredClone(c.chatMetadata)},saveSettingsDebounced:()=>{},setExtensionPrompt:(_id,text)=>window.injected=text};window.handlers={};window.SillyTavern={getContext:()=>c};}""")
   page.route('**/script.js',lambda r:r.fulfill(content_type='text/javascript',body='export function isGenerating(){return false}'))
   page.route('**/scripts/world-info.js',lambda r:r.fulfill(content_type='text/javascript',body='export const world_info={};export async function loadWorldInfo(){return {entries:{0:{uid:0,content:"WORLD_EVIDENCE 有效世界书内容",key:["铜印"],disable:false}}}}'))
