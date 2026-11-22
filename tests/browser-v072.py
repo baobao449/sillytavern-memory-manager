@@ -34,8 +34,10 @@ with sync_playwright() as p:
   page.route('**/scripts/chats.js',lambda r:r.fulfill(content_type='text/javascript',body='export async function hideChatMessageRange(start,end){for(let i=start;i<=end;i++)window.SillyTavern.getContext().chat[i].is_system=true}'))
   page.route('**/api/chats/get',lambda r:r.fulfill(json=[{'chat_metadata':page.evaluate('window.savedStore')}]))
   behavior={'drift':False,'fail':False,'multi':False};repair_calls=[];calls={'summary':0,'check':0};check_sizes=[];revisions=[];theme_checks=[];held=[];hold={'value':False}
+  merge_payloads=[]
   def generate(route):
    data=route.request.post_data_json;payload=json.loads(data['messages'][-1]['content'])
+   if payload.get('task',{}).get('operation')=='合并已确认剧情记忆':merge_payloads.append(payload)
    if 'revision' in payload.get('task',{}):revisions.append(payload['task']['revision'])
    if 'items' in payload:
     content=json.dumps({'items':[{'id':m['id'],'keywords':['铜印','阿宁']} for m in payload['items']]},ensure_ascii=False)
@@ -477,6 +479,8 @@ with sync_playwright() as p:
   assert '有效 10 条 · 可整理 10 条' in stage1.inner_text()
   for i in range(5):page.locator('[data-org-pick="1"]').nth(i).check()
   page.locator('[data-action=org-merge2]').click();page.locator('[data-choice=later]').click()
+  assert merge_payloads[-1]['reference']=={'character':None,'memories':[],'worldBooks':[]}
+  assert all(s['role']=='memory' and 'raw' not in s for s in merge_payloads[-1]['sources'])
   page.locator('.smm-save [data-action=approve]').click();page.wait_for_function('window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories.length===11')
   page.locator('[data-tab=organize]').click()
   assert '有效 5 条 · 可整理 5 条' in stage1.inner_text()
@@ -540,6 +544,22 @@ with sync_playwright() as p:
   page.locator('[data-tab=organize]').click()
   assert '有效 0 条 · 可整理 0 条' in stage2.inner_text()
   assert '有效 1 条' in page.locator('[data-entry=organization-3] > summary').inner_text()
+  page.evaluate("""()=>{const c=window.SillyTavern.getContext(),s=c.chatMetadata.st_memory_manager;s.memories.push({id:'merge-peer',title:'另一条长期归纳',summary:'另一段剧情',details:{},keywords:[],sources:[8],kind:'fixed',status:'active',level:3});Object.assign(s.options,{includeCharacter:true,includeMemories:true,oldPolicy3:'delete'});window.handlers.CHAT_CHANGED();}""")
+  page.locator('[data-tab=organize]').click();drawers()
+  section=page.locator('[data-entry=organization-3]')
+  assert '长期归纳' in section.locator(':scope > summary').inner_text()
+  section.locator('[data-org-all]').check()
+  section.locator('[data-org-references]').check()
+  section.locator('[data-action=org-previewsame]').click()
+  page.locator('#smm-org-previewsame').get_by_text('其他已有记忆',exact=True).wait_for()
+  section.locator('[data-action=org-mergesame]').click()
+  page.locator('[data-tab=draft].active').wait_for()
+  payload=merge_payloads[-1]
+  assert payload['summaryLevel']==3 and len(payload['sources'])==2
+  assert all(s['role']=='memory' and 'raw' not in s for s in payload['sources'])
+  assert payload['reference']['character']['name']=='Mock' and payload['reference']['memories']
+  page.locator('.smm-save [data-action=approve]').click()
+  page.wait_for_function("""()=>{const m=window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories;return m.filter(x=>x.level===3&&x.status==='archived').length===2&&m.filter(x=>x.level===3&&x.status==='active'&&x.parentIds?.length===2).length===1;}""")
   page.locator('[data-action=settings-open]').click();drawers()
   page.evaluate("""()=>{const style=document.createElement('style');style.id='mock-host-input';style.textContent='input,textarea,select{background:black!important;color:white!important}';document.head.append(style);document.body.style.setProperty('--SmartThemeChatTintColor','#badcfe');document.body.style.setProperty('--SmartThemeBodyColor','#123456');}""")
   page.locator('[data-setting=themePreset]').select_option('paper')

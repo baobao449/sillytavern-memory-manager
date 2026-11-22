@@ -1,4 +1,4 @@
-import {bindPanelMovement} from './panel.js?v=0.7.9';
+import {bindPanelMovement} from './panel.js?v=0.7.10';
 export function createProgress(cancel,pause=()=>{}){
  let element,closed=false;
  const hide=()=>{if(element){if(element.matches(':popover-open'))element.hidePopover();element.hidden=true;if(element.parentElement!==document.body)document.body.append(element);}};
