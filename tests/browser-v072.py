@@ -59,7 +59,7 @@ with sync_playwright() as p:
    response={'choices':[{'message':{'content':content},'finish_reason':'stop'}]};held.append((route,response)) if hold['value'] or calls['summary']>=hold.get('after',100000) else route.fulfill(json=response)
   page.route('**/api/backends/chat-completions/generate',generate)
   page.route('**/api/backends/chat-completions/status',lambda r:r.fulfill(json={'data':[{'id':'mock-model'}]}))
-  page.evaluate("import('/index.js')");page.locator('#smm-entry').click()
+  page.evaluate("()=>{window.fixtureOptions=(s,v)=>{Object.assign(window.SillyTavern.getContext().extensionSettings.st_memory_manager,Object.fromEntries(Object.entries(v).filter(([k])=>!['startFloor','autoStartFloor'].includes(k))));Object.assign(s.options??={},Object.fromEntries(Object.entries(v).filter(([k])=>['startFloor','autoStartFloor'].includes(k))));};}");page.evaluate("import('/index.js')");page.locator('#smm-entry').click()
   page.wait_for_timeout(650)
   if page.locator('[data-choice=later]').count():page.locator('[data-choice=later]').click()
   def drawers():page.evaluate("document.querySelectorAll('#smm-panel details').forEach(d=>d.open=true)")
@@ -204,7 +204,7 @@ with sync_playwright() as p:
   page.evaluate("""()=>{document.body.innerHTML='<div id="extensionsMenu"></div>';const l=document.createElement('link');l.rel='stylesheet';l.href='/style.css';document.head.append(l);const ns='st_memory_manager';const c={chat:Array.from({length:30},(_,i)=>({name:i%2?'Role':'User',is_user:i%2===0,mes:i%2?'<CONTENT>真实原话。阿宁持有铜印。':'你好'})),chatId:'flow-test',characterId:0,characters:[{name:'Mock',avatar:'mock.png',data:{extensions:{world:'Test Book'}}}],name2:'Mock',chatMetadata:{[ns]:{schema:1,memories:[],batches:[],hidden:[],recall:{},revision:0,options:{baseUrl:'bad-old',filterVersion:1,batchSize:0}}},extensionSettings:{[ns]:{baseUrl:'https://old.invalid',customCss:'bad-old-css',attics:{'mock.png':{memories:[]}}}},eventTypes:{CHAT_CHANGED:'CHAT_CHANGED',MESSAGE_RECEIVED:'received',GENERATION_AFTER_COMMANDS:'inject',CHAT_COMPLETION_PROMPT_READY:'ready'},eventSource:{on:(name,fn)=>{window.handlers[name]=fn}},getRequestHeaders:()=>({'Content-Type':'application/json'}),saveMetadata:async()=>{window.savedStore=structuredClone(c.chatMetadata)},saveSettingsDebounced:()=>{},setExtensionPrompt:(_id,text)=>window.injected=text};window.handlers={};window.SillyTavern={getContext:()=>c};}""")
   page.evaluate('(saved)=>{const c=window.SillyTavern.getContext();c.chatMetadata=saved.metadata;c.extensionSettings=saved.settings}',captured)
   if preview:page.add_style_tag(content='#st_memory_manager-toast{visibility:hidden!important}')
-  page.evaluate("import('/index.js')");page.locator('#smm-entry').click();page.get_by_role('button',name='待确认',exact=True).click();page.locator('[data-action=approve-all]').wait_for()
+  page.evaluate("()=>{window.fixtureOptions=(s,v)=>{Object.assign(window.SillyTavern.getContext().extensionSettings.st_memory_manager,Object.fromEntries(Object.entries(v).filter(([k])=>!['startFloor','autoStartFloor'].includes(k))));Object.assign(s.options??={},Object.fromEntries(Object.entries(v).filter(([k])=>['startFloor','autoStartFloor'].includes(k))));};}");page.evaluate("import('/index.js')");page.locator('#smm-entry').click();page.get_by_role('button',name='待确认',exact=True).click();page.locator('[data-action=approve-all]').wait_for()
   # Confirm stays pinned while the memory body scrolls.
   for pos in [0,99999]:
    page.locator('#smm-panel .smm-body').evaluate('(e,n)=>e.scrollTop=n',pos)
@@ -340,7 +340,7 @@ with sync_playwright() as p:
   page.locator('[data-count-mode]').select_option('count');assert page.locator('[data-count-value]').is_visible()
   page.locator('[data-count-value]').fill('5');page.locator('[data-count-mode]').select_option('events')
   # One batch creates five entries; saving it triggers consolidation despite another pending batch.
-  page.evaluate("""()=>{const s=window.SillyTavern.getContext().chatMetadata.st_memory_manager;localStorage.removeItem('st_memory_manager:session:character:mock.png::flow-test');s.memories=[];s.batches=[];Object.assign(s.options,{startFloor:0,autoStartFloor:0,autoSecondary:true,secondaryCount:5,autoTertiary:false,autoSummary:false,check:false});window.handlers.CHAT_CHANGED();}""")
+  page.evaluate("""()=>{const s=window.SillyTavern.getContext().chatMetadata.st_memory_manager;localStorage.removeItem('st_memory_manager:session:character:mock.png::flow-test');s.memories=[];s.batches=[];window.fixtureOptions(s,{startFloor:0,autoStartFloor:0,autoSecondary:true,secondaryCount:5,autoTertiary:false,autoSummary:false,check:false});window.handlers.CHAT_CHANGED();}""")
   page.locator('[data-tab=summary]').click();drawers();page.locator('#smm-batch-start').fill('0');page.locator('#smm-batch-end').fill('9');page.locator('[data-setting=batchSize]').fill('5');page.locator('[data-setting=batchClassification]').select_option('manual');page.locator('#smm-batch-hide').uncheck()
   behavior['multi']=True;before_summary=calls['summary'];before_check=calls['check']
   page.locator('[data-action=batch-start]').click();page.locator('[data-action=approve-all]').wait_for();page.wait_for_function('document.querySelector("#smm-floating-progress")?.hidden===true')
@@ -397,7 +397,7 @@ with sync_playwright() as p:
   page.screenshot(path=str(root/'output'/f'v072-regression-{width}.png'))
   # v0.7.2: legacy deletion paths preserve physical hidden state and rewind all three inputs.
   for variant in ['missing','stale','none']:
-   page.evaluate("""(variant)=>{const c=window.SillyTavern.getContext(),s=c.chatMetadata.st_memory_manager;localStorage.removeItem('st_memory_manager:session:character:mock.png::flow-test');s.reopenedFloors=[];s.memories=[{id:'first',title:'前段',summary:'先前事实',details:{},keywords:[],sources:Array.from({length:20},(_,i)=>i),kind:'short',status:'active',level:1},{id:'last',title:'旧数据20-25',summary:'末段事实',details:{},keywords:[],sources:[20,21,22,23,24,25],kind:'short',status:'active',level:1}];s.batches=variant==='none'?[]:[{level:1,approved:true,floors:s.memories[0].sources,ids:['first']},{level:1,approved:true,floors:s.memories[1].sources,...(variant==='stale'?{ids:['obsolete']}: {})}];s.hidden=[20,21,22,23,24,25];c.chat.forEach((m,i)=>m.is_system=i>=20&&i<=25);Object.assign(s.options,{startFloor:26,autoStartFloor:26,autoSummary:false,autoSecondary:false,autoTertiary:false,check:false,earlyDraft:false,autoHide:false});window.handlers.CHAT_CHANGED();}""",variant)
+   page.evaluate("""(variant)=>{const c=window.SillyTavern.getContext(),s=c.chatMetadata.st_memory_manager;localStorage.removeItem('st_memory_manager:session:character:mock.png::flow-test');s.reopenedFloors=[];s.memories=[{id:'first',title:'前段',summary:'先前事实',details:{},keywords:[],sources:Array.from({length:20},(_,i)=>i),kind:'short',status:'active',level:1},{id:'last',title:'旧数据20-25',summary:'末段事实',details:{},keywords:[],sources:[20,21,22,23,24,25],kind:'short',status:'active',level:1}];s.batches=variant==='none'?[]:[{level:1,approved:true,floors:s.memories[0].sources,ids:['first']},{level:1,approved:true,floors:s.memories[1].sources,...(variant==='stale'?{ids:['obsolete']}: {})}];s.hidden=[20,21,22,23,24,25];c.chat.forEach((m,i)=>m.is_system=i>=20&&i<=25);window.fixtureOptions(s,{startFloor:26,autoStartFloor:26,autoSummary:false,autoSecondary:false,autoTertiary:false,check:false,earlyDraft:false,autoHide:false});window.handlers.CHAT_CHANGED();}""",variant)
    page.locator('[data-tab=memories]').click();drawers();page.locator('[data-pick=last]').check();page.locator('[data-action=memory-delete]').click()
    page.wait_for_function('window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories.length===1')
    page.locator('[data-tab=summary]').click();drawers()
@@ -410,7 +410,7 @@ with sync_playwright() as p:
    page.evaluate('window.handlers.CHAT_CHANGED()');page.locator('[data-tab=summary]').click()
    assert page.locator('#smm-start').input_value()=='20'
   # Explicit completion proposal; failed save must revert both appended marker and new summary.
-  page.evaluate("""()=>{const c=window.SillyTavern.getContext(),s=c.chatMetadata.st_memory_manager;localStorage.removeItem('st_memory_manager:session:character:mock.png::flow-test');s.memories=[{id:'old',title:'铜印约定',summary:'旧摘要原样保留',details:{promises:'阿宁归还铜印\\n明日赴约',time:'昨日',place:'青石桥'},keywords:['铜印','阿宁'],sources:[1],kind:'short',status:'active',level:1}];s.batches=[];s.reopenedFloors=[];s.hidden=[];c.chat.forEach(m=>m.is_system=false);c.chat[21].mes='<CONTENT>阿宁已经归还铜印，约定已完成。</CONTENT>';Object.assign(s.options,{startFloor:20,autoStartFloor:20,includeMemories:true,autoSummary:false,autoSecondary:false,autoTertiary:false,check:false,earlyDraft:false,autoHide:false});window.failMetadata=false;c.saveMetadata=async()=>{if(window.failMetadata)throw Error('模拟保存失败');window.savedStore=structuredClone(c.chatMetadata)};window.handlers.CHAT_CHANGED();}""")
+  page.evaluate("""()=>{const c=window.SillyTavern.getContext(),s=c.chatMetadata.st_memory_manager;localStorage.removeItem('st_memory_manager:session:character:mock.png::flow-test');s.memories=[{id:'old',title:'铜印约定',summary:'旧摘要原样保留',details:{promises:'阿宁归还铜印\\n明日赴约',time:'昨日',place:'青石桥'},keywords:['铜印','阿宁'],sources:[1],kind:'short',status:'active',level:1}];s.batches=[];s.reopenedFloors=[];s.hidden=[];c.chat.forEach(m=>m.is_system=false);c.chat[21].mes='<CONTENT>阿宁已经归还铜印，约定已完成。</CONTENT>';window.fixtureOptions(s,{startFloor:20,autoStartFloor:20,includeMemories:true,autoSummary:false,autoSecondary:false,autoTertiary:false,check:false,earlyDraft:false,autoHide:false});window.failMetadata=false;c.saveMetadata=async()=>{if(window.failMetadata)throw Error('模拟保存失败');window.savedStore=structuredClone(c.chatMetadata)};window.handlers.CHAT_CHANGED();}""")
   behavior['status']=True;page.locator('[data-tab=summary]').click();drawers();page.locator('#smm-start').fill('20');page.locator('#smm-end').fill('21');page.locator('[data-action=summarize]').click()
   page.locator('[data-status-update]').wait_for();assert not page.locator('[data-status-update]').is_checked()
   assert '第21楼证据' in page.locator('.smm-status-updates').inner_text()
@@ -451,29 +451,29 @@ with sync_playwright() as p:
   page.screenshot(path=str(root/'output'/f'v072-keyword-footer-{width}.png'))
   page.locator('.smm-keywords [data-cancel]').click()
   # AI classification preserves long suggestions even after check failure; manual keeps user choice.
-  page.evaluate("""()=>{const c=window.SillyTavern.getContext(),s=c.chatMetadata.st_memory_manager;localStorage.removeItem('st_memory_manager:session:character:mock.png::flow-test');s.memories=[];s.batches=[];s.reopenedFloors=[];Object.assign(s.options,{startFloor:0,autoStartFloor:0,autoSummary:false,autoSecondary:false,autoTertiary:false,check:false,earlyDraft:false,autoHide:false});window.handlers.CHAT_CHANGED();}""")
+  page.evaluate("""()=>{const c=window.SillyTavern.getContext(),s=c.chatMetadata.st_memory_manager;localStorage.removeItem('st_memory_manager:session:character:mock.png::flow-test');s.memories=[];s.batches=[];s.reopenedFloors=[];window.fixtureOptions(s,{startFloor:0,autoStartFloor:0,autoSummary:false,autoSecondary:false,autoTertiary:false,check:false,earlyDraft:false,autoHide:false});window.handlers.CHAT_CHANGED();}""")
   page.locator('[data-tab=summary]').click();drawers();page.locator('#smm-batch-start').fill('0');page.locator('#smm-batch-end').fill('9');page.locator('[data-setting=batchSize]').fill('5');page.locator('[data-setting=batchClassification]').select_option('ai');page.locator('#smm-batch-hide').uncheck();page.locator('[data-action=batch-start]').click()
   page.wait_for_function('window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories.length===2')
   assert page.evaluate('window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories.every(m=>m.kind==="long"&&m.keywords.length===2)')
   # Check failure must not discard the AI-selected category when queued for review.
   behavior['checkFail']=True
-  page.evaluate("""()=>{const s=window.SillyTavern.getContext().chatMetadata.st_memory_manager;localStorage.removeItem('st_memory_manager:session:character:mock.png::flow-test');s.memories=[];s.batches=[];s.reopenedFloors=[];Object.assign(s.options,{startFloor:0,autoStartFloor:0,check:true,earlyDraft:false});window.handlers.CHAT_CHANGED();}""")
+  page.evaluate("""()=>{const s=window.SillyTavern.getContext().chatMetadata.st_memory_manager;localStorage.removeItem('st_memory_manager:session:character:mock.png::flow-test');s.memories=[];s.batches=[];s.reopenedFloors=[];window.fixtureOptions(s,{startFloor:0,autoStartFloor:0,check:true,earlyDraft:false});window.handlers.CHAT_CHANGED();}""")
   page.locator('[data-tab=summary]').click();drawers();page.locator('#smm-batch-start').fill('0');page.locator('#smm-batch-end').fill('9');page.locator('[data-setting=batchSize]').fill('5');page.locator('[data-setting=batchClassification]').select_option('ai');page.locator('#smm-batch-hide').uncheck();page.locator('[data-action=batch-start]').click()
   page.locator('[data-action=approve-all]').wait_for();page.wait_for_function('document.querySelector("#smm-floating-progress")?.hidden===true')
   assert page.evaluate('window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories.length')==0
   assert '长期记忆' in page.locator('.smm-card summary small').first.inner_text()
   behavior['checkFail']=False
   # Mixed category confirmation queues matching kinds and still completes both batches.
-  page.evaluate("""()=>{const s=window.SillyTavern.getContext().chatMetadata.st_memory_manager;localStorage.removeItem('st_memory_manager:session:character:mock.png::flow-test');s.memories=[];s.batches=[];s.reopenedFloors=[];Object.assign(s.options,{startFloor:0,autoStartFloor:0,check:false,earlyDraft:false});window.handlers.CHAT_CHANGED();}""")
+  page.evaluate("""()=>{const s=window.SillyTavern.getContext().chatMetadata.st_memory_manager;localStorage.removeItem('st_memory_manager:session:character:mock.png::flow-test');s.memories=[];s.batches=[];s.reopenedFloors=[];window.fixtureOptions(s,{startFloor:0,autoStartFloor:0,check:false,earlyDraft:false});window.handlers.CHAT_CHANGED();}""")
   page.locator('[data-tab=summary]').click();drawers();page.locator('#smm-batch-start').fill('0');page.locator('#smm-batch-end').fill('9');page.locator('[data-setting=batchSize]').fill('5');page.locator('[data-setting=batchClassification]').select_option('mixed');page.locator('[data-batch-manual=long]').check();page.locator('#smm-batch-hide').uncheck();before=calls['summary'];page.locator('[data-action=batch-start]').click()
   page.locator('[data-action=approve-all]').wait_for();page.wait_for_function('document.querySelector("#smm-floating-progress")?.hidden===true')
   assert calls['summary']==before+2
   assert page.evaluate('window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories.length')==0
   assert '长期记忆' in page.locator('.smm-card summary small').first.inner_text()
   # Clear reviewed queue before checking cancellation of another two-batch task.
-  page.evaluate("""()=>{const s=window.SillyTavern.getContext().chatMetadata.st_memory_manager;localStorage.removeItem('st_memory_manager:session:character:mock.png::flow-test');Object.assign(s.options,{check:false});window.handlers.CHAT_CHANGED();}""")
+  page.evaluate("""()=>{const s=window.SillyTavern.getContext().chatMetadata.st_memory_manager;localStorage.removeItem('st_memory_manager:session:character:mock.png::flow-test');window.fixtureOptions(s,{check:false});window.handlers.CHAT_CHANGED();}""")
   # Stage counters are computed from the current active and eligible records.
-  page.evaluate("""()=>{const s=window.SillyTavern.getContext().chatMetadata.st_memory_manager;s.memories=Array.from({length:10},(_,i)=>({id:'org'+i,title:'整理测试'+i,summary:'阿宁赴约',details:{},keywords:[],sources:[i],kind:'short',status:'active',level:1}));s.batches=[];Object.assign(s.options,{autoSecondary:false,autoTertiary:false,oldPolicy2:'archive',oldPolicy3:'archive'});window.handlers.CHAT_CHANGED();}""")
+  page.evaluate("""()=>{const s=window.SillyTavern.getContext().chatMetadata.st_memory_manager;s.memories=Array.from({length:10},(_,i)=>({id:'org'+i,title:'整理测试'+i,summary:'阿宁赴约',details:{},keywords:[],sources:[i],kind:'short',status:'active',level:1}));s.batches=[];window.fixtureOptions(s,{autoSecondary:false,autoTertiary:false,oldPolicy2:'archive',oldPolicy3:'archive'});window.handlers.CHAT_CHANGED();}""")
   page.locator('[data-tab=organize]').click();drawers()
   stage1=page.locator('[data-entry=organization-1] > summary');stage2=page.locator('[data-entry=organization-2] > summary')
   assert '有效 10 条 · 可整理 10 条' in stage1.inner_text()
@@ -544,10 +544,17 @@ with sync_playwright() as p:
   page.locator('[data-tab=organize]').click()
   assert '有效 0 条 · 可整理 0 条' in stage2.inner_text()
   assert '有效 1 条' in page.locator('[data-entry=organization-3] > summary').inner_text()
-  page.evaluate("""()=>{const c=window.SillyTavern.getContext(),s=c.chatMetadata.st_memory_manager;s.memories.push({id:'merge-peer',title:'另一条长期归纳',summary:'另一段剧情',details:{},keywords:[],sources:[8],kind:'fixed',status:'active',level:3});Object.assign(s.options,{includeCharacter:true,includeMemories:true,oldPolicy3:'delete'});window.handlers.CHAT_CHANGED();}""")
+  page.evaluate("""()=>{const c=window.SillyTavern.getContext(),s=c.chatMetadata.st_memory_manager;s.memories.push({id:'merge-peer',title:'另一条长期归纳',summary:'另一段剧情',details:{},keywords:[],sources:[8],kind:'fixed',status:'active',level:3});window.fixtureOptions(s,{includeCharacter:true,includeMemories:true,oldPolicy3:'delete'});window.handlers.CHAT_CHANGED();}""")
   page.locator('[data-tab=organize]').click();drawers()
   section=page.locator('[data-entry=organization-3]')
   assert '长期归纳' in section.locator(':scope > summary').inner_text()
+  page.locator('#st_memory_manager-toast').evaluate_all('(es)=>es.forEach(e=>e.remove())')
+  section.scroll_into_view_if_needed()
+  section.screenshot(path=str(root/'output'/f'v0711-long-consolidation-{width}.png'))
+  refs=page.locator('[data-entry=organization-2]')
+  refs.scroll_into_view_if_needed()
+  refs.screenshot(path=str(root/'output'/f'v0711-reference-option-{width}.png'))
+
   section.locator('[data-org-all]').check()
   section.locator('[data-org-references]').check()
   section.locator('[data-action=org-previewsame]').click()
@@ -710,8 +717,48 @@ with sync_playwright() as p:
   page.locator('[data-tab=organize]').click()
   check_count_help()
   shot('15-organize')
+
+  # Shared preferences survive chat and character changes, stale legacy options cannot win.
+  page.locator('[data-action=settings-open]').click();drawers()
+  page.locator('[data-setting=timeout]').fill('123')
+  page.locator('[data-setting=keepRecent]').fill('6')
+  page.locator('[data-setting=themePreset]').select_option('paper')
+  page.locator('[data-setting=autoSummary]').uncheck()
+  page.locator('[data-action=settings-save]').click()
+  page.wait_for_function('window.SillyTavern.getContext().extensionSettings.st_memory_manager.timeout===123')
+  shared_before=page.evaluate("""()=>{const c=window.SillyTavern.getContext();window.originalChat={id:c.chatId,metadata:c.chatMetadata};return {memories:JSON.stringify(c.chatMetadata.st_memory_manager.memories),hidden:JSON.stringify(c.chatMetadata.st_memory_manager.hidden),options:c.chatMetadata.st_memory_manager.options,books:c.extensionSettings.st_memory_manager.worldBooks};}""")
+  assert set(shared_before['options'])=={'settingsSchema','startFloor','autoStartFloor'}
+  page.evaluate("""()=>{const c=window.SillyTavern.getContext();c.characters.push({name:'Other',avatar:'other.png'});c.chatId='other-chat';c.characterId=1;c.chatMetadata={st_memory_manager:{schema:1,memories:[],batches:[],hidden:[3],recall:{},revision:0,options:{settingsSchema:2,timeout:999,keepRecent:19,themePreset:'contrast',autoSummary:true,startFloor:7,autoStartFloor:8}}};window.handlers.CHAT_CHANGED();}""")
+  drawers()
+  assert page.locator('[data-setting=timeout]').input_value()=='123'
+  assert page.locator('[data-setting=keepRecent]').input_value()=='6'
+  assert page.locator('[data-setting=themePreset]').input_value()=='paper'
+  assert not page.locator('[data-setting=autoSummary]').is_checked()
+  assert page.locator('[data-setting=autoStartFloor]').input_value()=='8'
+  assert page.evaluate('window.SillyTavern.getContext().extensionSettings.st_memory_manager.worldBooks')==shared_before['books']
+  page.locator('[data-setting=keepRecent]').fill('9');page.locator('[data-action=settings-save]').click()
+  page.wait_for_function('window.SillyTavern.getContext().extensionSettings.st_memory_manager.keepRecent===9')
+  page.evaluate("""()=>{const c=window.SillyTavern.getContext();window.otherChat=c.chatMetadata;c.chatId=window.originalChat.id;c.chatMetadata=window.originalChat.metadata;c.characterId=0;window.handlers.CHAT_CHANGED();}""")
+  drawers()
+  assert page.locator('[data-setting=keepRecent]').input_value()=='9'
+  assert page.evaluate('JSON.stringify(window.SillyTavern.getContext().chatMetadata.st_memory_manager.memories)')==shared_before['memories']
+  assert page.evaluate('JSON.stringify(window.SillyTavern.getContext().chatMetadata.st_memory_manager.hidden)')==shared_before['hidden']
+  assert page.locator('[data-setting=autoStartFloor]').input_value()==str(shared_before['options']['autoStartFloor'])
+  page.evaluate("""()=>{const c=window.SillyTavern.getContext();c.chatId='new-chat';c.chatMetadata={};window.handlers.CHAT_CHANGED();}""")
+  drawers()
+  assert page.locator('[data-setting=keepRecent]').input_value()=='9'
+  assert page.locator('[data-setting=autoStartFloor]').input_value()=='0'
+  assert page.evaluate('window.otherChat.st_memory_manager.hidden')==[3]
+  # Save and reload the browser: shared preferences and the empty chat cursor remain.
+  captured=page.evaluate('({metadata:window.SillyTavern.getContext().chatMetadata,settings:window.SillyTavern.getContext().extensionSettings})')
+  page.reload()
+  page.evaluate("""saved=>{document.body.innerHTML='<div id="extensionsMenu"></div>';const l=document.createElement('link');l.rel='stylesheet';l.href='/style.css';document.head.append(l);const c={chat:[],chatId:'new-chat',characterId:0,characters:[{name:'Mock',avatar:'mock.png'}],name2:'Mock',chatMetadata:saved.metadata,extensionSettings:saved.settings,eventTypes:{CHAT_CHANGED:'CHAT_CHANGED'},eventSource:{on:(n,f)=>window.handlers[n]=f},saveMetadata:async()=>{},saveSettingsDebounced:()=>{},setExtensionPrompt:()=>{}};window.handlers={};window.SillyTavern={getContext:()=>c};}""",captured)
+  page.evaluate("import('/index.js')");page.locator('#smm-entry').click();page.locator('[data-action=settings-open]').click();drawers()
+  assert page.locator('[data-setting=keepRecent]').input_value()=='9'
+  assert page.locator('[data-setting=timeout]').input_value()=='123'
+  assert page.locator('[data-setting=autoStartFloor]').input_value()=='0'
   assert errors==[],errors
-  results.append({'width':width,'calls':calls,'defaults':True,'continuousBatches':True,'saveAll':True,'ignoreGaps':True,'autoCursor':True,'tourCenteredSettingsFirst':True,'fixedFooter':True,'legacyDeleteHiddenUntouched':True,'statusUpdateRollbackAndNotice':True,'clearSelection':True,'aiAndMixedClassification':True,'resizableCancellableProgress':True,'themeChecks':theme_checks})
+  results.append({'width':width,'calls':calls,'sharedPreferencesCrossChatCharacterAndReload':True,'defaults':True,'continuousBatches':True,'saveAll':True,'ignoreGaps':True,'autoCursor':True,'tourCenteredSettingsFirst':True,'fixedFooter':True,'legacyDeleteHiddenUntouched':True,'statusUpdateRollbackAndNotice':True,'clearSelection':True,'aiAndMixedClassification':True,'resizableCancellableProgress':True,'themeChecks':theme_checks})
   page.close()
  browser.close();(root/'output'/'v072-browser-results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding='utf-8');print(json.dumps(results,ensure_ascii=False))
 server.shutdown()

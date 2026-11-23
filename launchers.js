@@ -1,4 +1,4 @@
-import {escapeHtml as h} from './core.js?v=0.7.10';
+import {escapeHtml as h} from './core.js?v=0.7.11';
 
 const KEY='st_memory_manager:launchers';
 const DEFAULT_COLOR='#000000';

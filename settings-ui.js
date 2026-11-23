@@ -1,6 +1,6 @@
-import {help} from './ui-help.js?v=0.7.10';
-import {appearanceView} from './appearance.js?v=0.7.10';
-import {PROMPT_LIBRARY,FIELDS,DEFAULTS,escapeHtml as h,outputFormat} from './core.js?v=0.7.10';
+import {help} from './ui-help.js?v=0.7.11';
+import {appearanceView} from './appearance.js?v=0.7.11';
+import {PROMPT_LIBRARY,FIELDS,DEFAULTS,escapeHtml as h,outputFormat} from './core.js?v=0.7.11';
 
 export function settingsView(s,models,key,books,checkKey='',checkModels=[],repairKey='',repairModels=[],launchers=''){
  s={...s,modes:{...DEFAULTS.modes,...s.modes},sendFields:{...DEFAULTS.sendFields,...s.sendFields}};
@@ -28,7 +28,7 @@ export function settingsView(s,models,key,books,checkKey='',checkModels=[],repai
  const appearance=select('themePreset','内置主题',{tavern:'跟随酒馆（不透明底色）',soft:'柔和蓝灰',paper:'纸张米色',contrast:'高对比'})+select('fontPreset','内置字体',{system:'系统默认',tavern:'跟随酒馆字体',sans:'清晰黑体',serif:'宋体／衬线',kai:'楷体风格',mono:'等宽字体'})+appearanceView(s.appearance)+drawer('自定义 CSS','仅使用插件 smm- 前缀选择器',area('customCss','自定义 CSS'))+b('appearance-reset','恢复默认美化参数','class="smm-text-button"');
  const profile=`<section class="smm-settings-profiles"><h3>设置存档</h3><select id="smm-profiles"><option value="">选择存档</option>${profiles}</select>${row(b('profile-save','新建存档')+b('profile-update','更新选中存档')+b('profile-delete','删除存档'))}</section>`;
  const backup=row(b('memory-import','导入本聊天记忆')+b('export','导出本聊天记忆'))+row(b('view-backups','查看本机备份')+b('restore','恢复最近备份'))+'<div id="smm-backup-list"></div>';
- return drawer('插件开关','',check('pluginEnabled','启用插件')+launchers)+profile+
+ return '<p class="smm-shared-settings-note">设置对所有聊天通用；记忆、草稿和楼层进度仍按聊天分别保存。</p>'+drawer('插件开关','',check('pluginEnabled','启用插件')+launchers)+profile+
  drawer('API 与连接','密钥预设、各 API、流式、超时和重试',apiBody)+
  drawer('自动总结与分级','触发起点、自动保存、隐藏及二三次升级',automatic,'smm-automatic-settings')+
  drawer('长期记忆设置','通过本地关键词规则发送长期记忆',longMemory)+
